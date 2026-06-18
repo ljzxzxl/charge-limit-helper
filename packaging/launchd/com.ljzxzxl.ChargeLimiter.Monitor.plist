@@ -4,7 +4,7 @@
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.lookslikecode.ChargeLimitMonitor</string>
+  <string>com.ljzxzxl.ChargeLimiter.Monitor</string>
 
   <key>ProgramArguments</key>
   <array>
@@ -21,9 +21,9 @@
   <true/>
 
   <key>StandardOutPath</key>
-  <string>/tmp/charge-limit-monitor.log</string>
+  <string>/tmp/charge-limiter-monitor.log</string>
 
   <key>StandardErrorPath</key>
-  <string>/tmp/charge-limit-monitor.err.log</string>
+  <string>/tmp/charge-limiter-monitor.err.log</string>
 </dict>
 </plist>

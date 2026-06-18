@@ -2,7 +2,9 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-MONITOR_LABEL="com.lookslikecode.ChargeLimitMonitor"
+MONITOR_LABEL="com.ljzxzxl.ChargeLimiter.Monitor"
+# Legacy label is only kept so v0.1.0-v0.1.5 monitor installs can be removed.
+LEGACY_MONITOR_LABEL="com.lookslikecode.ChargeLimitMonitor"
 TARGET=80
 if [[ "${EUID}" -eq 0 ]]; then
   SUDO=()
@@ -38,6 +40,9 @@ fi
 
 mkdir -p "$HOME/Library/LaunchAgents"
 MONITOR_PLIST="$HOME/Library/LaunchAgents/${MONITOR_LABEL}.plist"
+LEGACY_MONITOR_PLIST="$HOME/Library/LaunchAgents/${LEGACY_MONITOR_LABEL}.plist"
+launchctl bootout "gui/$(id -u)" "$LEGACY_MONITOR_PLIST" 2>/dev/null || true
+rm -f "$LEGACY_MONITOR_PLIST"
 cp "packaging/launchd/${MONITOR_LABEL}.plist" "$MONITOR_PLIST"
 /usr/libexec/PlistBuddy -c "Set :ProgramArguments:2 ${TARGET}" "$MONITOR_PLIST"
 

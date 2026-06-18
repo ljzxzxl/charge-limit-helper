@@ -91,10 +91,10 @@ private func doctor() -> DoctorReport {
 private func printLogs() {
     let paths = [
         ChargeLimitPaths.helperLogPath,
-        "/Library/Logs/ChargeLimitHelper/helper.log",
-        "/Library/Logs/ChargeLimitHelper/helper.err.log",
+        "\(ChargeLimitPaths.logDirectory)/helper.log",
+        "\(ChargeLimitPaths.logDirectory)/helper.err.log",
         ChargeLimitPaths.monitorLogPath,
-        "/tmp/charge-limit-monitor.err.log"
+        "/tmp/charge-limiter-monitor.err.log"
     ]
 
     for path in paths {

@@ -13,13 +13,13 @@
   <string>ChargeLimiter</string>
 
   <key>CFBundleIconFile</key>
-  <string>ChargeLimitHelper</string>
+  <string>ChargeLimiter</string>
 
   <key>CFBundleIconName</key>
-  <string>ChargeLimitHelper</string>
+  <string>ChargeLimiter</string>
 
   <key>CFBundleIdentifier</key>
-  <string>com.lookslikecode.ChargeLimiter</string>
+  <string>com.ljzxzxl.ChargeLimiter</string>
 
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>

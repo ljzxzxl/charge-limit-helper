@@ -48,12 +48,12 @@ public struct HelperResponse: Codable, Equatable, Sendable {
 
 public enum ChargeLimitPaths {
     public static let socketPath = "/var/run/charge-limit-helper.sock"
-    public static let helperLabel = "com.lookslikecode.ChargeLimitHelper"
-    public static let monitorLabel = "com.lookslikecode.ChargeLimitMonitor"
+    public static let helperLabel = "com.ljzxzxl.ChargeLimiter.Helper"
+    public static let monitorLabel = "com.ljzxzxl.ChargeLimiter.Monitor"
     public static let helperInstallPath = "/Library/PrivilegedHelperTools/charge-limit-helperd"
-    public static let logDirectory = "/Library/Logs/ChargeLimitHelper"
-    public static let helperLogPath = "/Library/Logs/ChargeLimitHelper/helper.events.log"
-    public static let monitorLogPath = "/tmp/charge-limit-monitor.log"
+    public static let logDirectory = "/Library/Logs/ChargeLimiter"
+    public static let helperLogPath = "/Library/Logs/ChargeLimiter/helper.events.log"
+    public static let monitorLogPath = "/tmp/charge-limiter-monitor.log"
 }
 
 public enum JSONCodec {

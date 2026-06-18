@@ -87,6 +87,17 @@ Supporting files:
 - `docs/architecture.md`
 - `docs/validation.md`
 
+Current identifiers:
+
+- App bundle ID: `com.ljzxzxl.ChargeLimiter`
+- Helper LaunchDaemon: `com.ljzxzxl.ChargeLimiter.Helper`
+- Monitor LaunchAgent: `com.ljzxzxl.ChargeLimiter.Monitor`
+- Helper logs: `/Library/Logs/ChargeLimiter`
+
+The older `com.lookslikecode.*` labels only appear in installer/uninstaller
+legacy cleanup code for v0.1.0-v0.1.5 and must not be used for new install
+artifacts.
+
 ## Current Validation
 
 Known-good commands:

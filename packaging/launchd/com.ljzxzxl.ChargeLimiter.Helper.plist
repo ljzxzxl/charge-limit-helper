@@ -4,7 +4,7 @@
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.lookslikecode.ChargeLimitHelper</string>
+  <string>com.ljzxzxl.ChargeLimiter.Helper</string>
 
   <key>ProgramArguments</key>
   <array>
@@ -19,9 +19,9 @@
   <true/>
 
   <key>StandardOutPath</key>
-  <string>/Library/Logs/ChargeLimitHelper/helper.log</string>
+  <string>/Library/Logs/ChargeLimiter/helper.log</string>
 
   <key>StandardErrorPath</key>
-  <string>/Library/Logs/ChargeLimitHelper/helper.err.log</string>
+  <string>/Library/Logs/ChargeLimiter/helper.err.log</string>
 </dict>
 </plist>

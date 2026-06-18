@@ -14,9 +14,9 @@ RESOURCES_DIR="${CONTENTS_DIR}/Resources"
 TOOLS_DIR="${RESOURCES_DIR}/Tools"
 SCRIPTS_DIR="${RESOURCES_DIR}/Scripts"
 LAUNCHD_DIR="${RESOURCES_DIR}/LaunchDaemons"
-ICON_PNG="${ROOT_DIR}/Resources/ChargeLimitHelper.png"
-ICONSET_DIR="${BUILD_DIR}/ChargeLimitHelper.iconset"
-ICON_ICNS="${RESOURCES_DIR}/ChargeLimitHelper.icns"
+ICON_PNG="${ROOT_DIR}/Resources/ChargeLimiter.png"
+ICONSET_DIR="${BUILD_DIR}/ChargeLimiter.iconset"
+ICON_ICNS="${RESOURCES_DIR}/ChargeLimiter.icns"
 
 cd "${ROOT_DIR}"
 swift build -c release
@@ -39,7 +39,7 @@ cp "${ROOT_DIR}/packaging/app-scripts/install-helper.sh" "${SCRIPTS_DIR}/install
 cp "${ROOT_DIR}/packaging/app-scripts/uninstall-helper.sh" "${SCRIPTS_DIR}/uninstall-helper.sh"
 chmod +x "${SCRIPTS_DIR}/install-helper.sh" "${SCRIPTS_DIR}/uninstall-helper.sh"
 
-cp "${ROOT_DIR}/packaging/launchd/com.lookslikecode.ChargeLimitHelper.plist" "${LAUNCHD_DIR}/com.lookslikecode.ChargeLimitHelper.plist"
+cp "${ROOT_DIR}/packaging/launchd/com.ljzxzxl.ChargeLimiter.Helper.plist" "${LAUNCHD_DIR}/com.ljzxzxl.ChargeLimiter.Helper.plist"
 cp "${ROOT_DIR}/Resources/MenuBarIcons/MenuBarIconLight.png" "${RESOURCES_DIR}/MenuBarIconLight.png"
 cp "${ROOT_DIR}/Resources/MenuBarIcons/MenuBarIconLight@2x.png" "${RESOURCES_DIR}/MenuBarIconLight@2x.png"
 cp "${ROOT_DIR}/Resources/MenuBarIcons/MenuBarIconDark.png" "${RESOURCES_DIR}/MenuBarIconDark.png"

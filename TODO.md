@@ -24,7 +24,7 @@ loop works without AlDente.
 
 - [ ] Verify `scripts/install-helper.sh` installs:
   - [ ] `/Library/PrivilegedHelperTools/charge-limit-helperd`
-  - [ ] `/Library/LaunchDaemons/com.lookslikecode.ChargeLimitHelper.plist`
+  - [ ] `/Library/LaunchDaemons/com.ljzxzxl.ChargeLimiter.Helper.plist`
   - [ ] `/var/run/charge-limit-helper.sock`
 - [ ] Verify helper LaunchDaemon starts after install.
 - [ ] Verify `.build/release/charge-limit status` talks to the helper socket.
