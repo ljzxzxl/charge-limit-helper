@@ -40,8 +40,6 @@ cp "${ROOT_DIR}/packaging/app-scripts/uninstall-helper.sh" "${SCRIPTS_DIR}/unins
 chmod +x "${SCRIPTS_DIR}/install-helper.sh" "${SCRIPTS_DIR}/uninstall-helper.sh"
 
 cp "${ROOT_DIR}/packaging/launchd/com.lookslikecode.ChargeLimitHelper.plist" "${LAUNCHD_DIR}/com.lookslikecode.ChargeLimitHelper.plist"
-cp "${ROOT_DIR}/Resources/MenuBarIconLight.png" "${RESOURCES_DIR}/MenuBarIconLight.png"
-cp "${ROOT_DIR}/Resources/MenuBarIconDark.png" "${RESOURCES_DIR}/MenuBarIconDark.png"
 
 if [[ ! -f "${ICON_PNG}" ]]; then
   echo "Missing icon: ${ICON_PNG}" >&2
