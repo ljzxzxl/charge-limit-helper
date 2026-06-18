@@ -5,6 +5,14 @@ import Foundation
 private let version = "0.1-dev"
 private let defaultBCLMValue: UInt8 = 100
 private let minimumWriteInterval: TimeInterval = 2
+private let allowedRawSMCWrites: [String: Set<String>] = [
+    "CH0B": ["00", "02"],
+    "CH0C": ["00", "02"],
+    "CH0I": ["00", "01"],
+    "CH0J": ["00", "01"],
+    "CHIE": ["00", "08"],
+    "CHTE": ["00000000", "01000000"]
+]
 
 private final class HelperState: @unchecked Sendable {
     private let lock = NSLock()
@@ -41,6 +49,8 @@ private func usage() {
       charge-limit-helperd status
       charge-limit-helperd set-bclm [--unsafe-allow-unsupported] <value>
       charge-limit-helperd restore-default [--unsafe-allow-unsupported]
+      charge-limit-helperd smc-read <key>
+      charge-limit-helperd smc-write-hex [--unsafe-allow-unsupported] <key> <hex>
 
     The daemon mode is intended to run as root via launchd.
     """)
@@ -131,6 +141,68 @@ private func setBCLMResponse(_ value: UInt8, allowUnsupported: Bool = false, rea
     } catch {
         logEvent("failed to set BCLM=\(value): \(String(describing: error))")
         return HelperResponse(ok: false, error: String(describing: error))
+    }
+}
+
+private func validateSMCKeyArgument(_ key: String) -> Bool {
+    key.utf8.count == 4
+}
+
+private func normalizedHex(_ value: String) -> String {
+    value
+        .replacingOccurrences(of: "0x", with: "")
+        .replacingOccurrences(of: " ", with: "")
+        .lowercased()
+}
+
+private func printRawSMC(_ value: SMCRawValue) {
+    do {
+        let data = try JSONCodec.encoder.encode(value)
+        FileHandle.standardOutput.write(data)
+        print()
+    } catch {
+        print(value)
+    }
+}
+
+private func readRawSMC(_ key: String) {
+    guard validateSMCKeyArgument(key) else {
+        fputs("SMC key must be exactly 4 bytes\n", stderr)
+        exit(2)
+    }
+
+    do {
+        printRawSMC(try SMC().readRaw(key))
+    } catch {
+        fputs("smc-read: \(String(describing: error))\n", stderr)
+        exit(1)
+    }
+}
+
+private func writeRawSMC(_ key: String, hex: String, allowUnsupported: Bool) {
+    guard geteuid() == 0 else {
+        fputs("smc-write-hex requires root\n", stderr)
+        exit(77)
+    }
+    guard validateSMCKeyArgument(key) else {
+        fputs("SMC key must be exactly 4 bytes\n", stderr)
+        exit(2)
+    }
+    let normalized = normalizedHex(hex)
+    guard allowedRawSMCWrites[key]?.contains(normalized) == true else {
+        fputs("smc-write-hex: write not allowed for \(key)=\(hex)\n", stderr)
+        exit(2)
+    }
+
+    do {
+        try CompatibilityChecker.requireSupported(allowUnsafeOverride: allowUnsupported)
+        let raw = try SMC().writeRawHex(key, hex: normalized)
+        logEvent("raw SMC write \(key)=\(raw.hex) allowUnsupported=\(allowUnsupported)")
+        printRawSMC(raw)
+    } catch {
+        logEvent("failed raw SMC write \(key)=\(normalized): \(String(describing: error))")
+        fputs("smc-write-hex: \(String(describing: error))\n", stderr)
+        exit(1)
     }
 }
 
@@ -226,6 +298,20 @@ case "set-bclm":
 case "restore-default":
     let allowUnsupported = arguments.contains("--unsafe-allow-unsupported")
     printJSON(setBCLMResponse(defaultBCLMValue, allowUnsupported: allowUnsupported, reason: "restore default"))
+case "smc-read":
+    guard arguments.count >= 2 else {
+        usage()
+        exit(2)
+    }
+    readRawSMC(arguments[1])
+case "smc-write-hex":
+    let allowUnsupported = arguments.contains("--unsafe-allow-unsupported")
+    let filtered = arguments.dropFirst().filter { !$0.hasPrefix("--") }
+    guard filtered.count >= 2 else {
+        usage()
+        exit(2)
+    }
+    writeRawSMC(filtered[0], hex: filtered[1], allowUnsupported: allowUnsupported)
 default:
     usage()
     exit(2)

@@ -22,7 +22,6 @@ private enum L10n {
     static var enableLimit: String { isChinese ? "启用充电限制" : "Enable Limit" }
     static var pauseCharging: String { isChinese ? "暂停充电" : "Pause Charging" }
     static var resumeCharging: String { isChinese ? "恢复充电" : "Resume Charging" }
-    static var restoreDefault: String { isChinese ? "恢复默认充电" : "Restore Default" }
     static var installHelper: String { isChinese ? "安装 Helper" : "Install Helper" }
     static var uninstallHelper: String { isChinese ? "卸载 Helper" : "Uninstall Helper" }
     static var showLogs: String { isChinese ? "显示日志" : "Show Logs" }
@@ -34,6 +33,20 @@ private enum L10n {
     static var unknownError: String { isChinese ? "未知 AppleScript 错误" : "Unknown AppleScript error" }
     static var notNow: String { isChinese ? "暂不" : "Not Now" }
     static var enable: String { isChinese ? "开启" : "Enable" }
+    static var continueAction: String { isChinese ? "继续" : "Continue" }
+    static var cancel: String { isChinese ? "取消" : "Cancel" }
+
+    static var manualPauseMessage: String {
+        isChinese
+            ? "手动暂停充电会关闭“启用充电限制”，避免自动策略在下一次刷新时覆盖你的操作。是否继续？"
+            : "Manually pausing charging will disable Enable Limit so the automatic policy does not override this action on the next refresh. Continue?"
+    }
+
+    static var manualResumeMessage: String {
+        isChinese
+            ? "手动恢复充电会关闭“启用充电限制”，让系统持续按默认方式充电，直到你再次启用充电限制。是否继续？"
+            : "Manually resuming charging will disable Enable Limit so the system keeps charging normally until you enable the limit again. Continue?"
+    }
 
     static func supported(model: String) -> String {
         isChinese ? "已支持：\(model)" : "Supported: \(model)"
@@ -78,6 +91,8 @@ private enum L10n {
             return isChinese ? "需要安装 Helper" : "Install Helper Required"
         case .enableLaunchAtLogin:
             return isChinese ? "开启开机自启？" : "Enable Launch at Login?"
+        case .manualActionDisablesLimit:
+            return isChinese ? "将停用充电限制" : "Charge Limit Will Be Disabled"
         }
     }
 
@@ -115,15 +130,18 @@ private enum L10n {
         case launchAtLoginFailed
         case installHelperRequired
         case enableLaunchAtLogin
+        case manualActionDisablesLimit
     }
 }
 
 private enum MenuBarIcon {
+    private static let logicalSize = NSSize(width: 18, height: 18)
+
     @MainActor
     static func make(for appearance: NSAppearance?) -> NSImage {
         let imageName = usesDarkAppearance(appearance) ? "MenuBarIconDark" : "MenuBarIconLight"
-        let image = loadImage(named: imageName) ?? NSImage(size: NSSize(width: 18, height: 18))
-        image.size = NSSize(width: 18, height: 18)
+        let image = loadImage(named: imageName) ?? NSImage(size: logicalSize)
+        image.size = logicalSize
         image.isTemplate = false
         return image
     }
@@ -135,13 +153,47 @@ private enum MenuBarIcon {
     }
 
     private static func loadImage(named name: String) -> NSImage? {
-        if let url = Bundle.main.url(forResource: name, withExtension: "png"),
-           let image = NSImage(contentsOf: url) {
-            return image
+        for urls in imageURLSets(named: name) {
+            if let image = makeMultiScaleImage(oneX: urls.oneX, twoX: urls.twoX) {
+                return image
+            }
         }
 
-        let repoPath = "\(FileManager.default.currentDirectoryPath)/Resources/MenuBarIcons/\(name).png"
-        return NSImage(contentsOfFile: repoPath)
+        return nil
+    }
+
+    private static func imageURLSets(named name: String) -> [(oneX: URL?, twoX: URL?)] {
+        let bundleURLs = (
+            oneX: Bundle.main.url(forResource: name, withExtension: "png"),
+            twoX: Bundle.main.url(forResource: "\(name)@2x", withExtension: "png")
+        )
+
+        let repoDirectory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            .appendingPathComponent("Resources")
+            .appendingPathComponent("MenuBarIcons")
+        let repoURLs = (
+            oneX: repoDirectory.appendingPathComponent("\(name).png"),
+            twoX: repoDirectory.appendingPathComponent("\(name)@2x.png")
+        )
+
+        return [bundleURLs, repoURLs]
+    }
+
+    private static func makeMultiScaleImage(oneX: URL?, twoX: URL?) -> NSImage? {
+        let image = NSImage(size: logicalSize)
+        var didAddRepresentation = false
+
+        for url in [oneX, twoX].compactMap({ $0 }) where FileManager.default.fileExists(atPath: url.path) {
+            guard let data = try? Data(contentsOf: url),
+                  let representation = NSBitmapImageRep(data: data) else {
+                continue
+            }
+            representation.size = logicalSize
+            image.addRepresentation(representation)
+            didAddRepresentation = true
+        }
+
+        return didAddRepresentation ? image : nil
     }
 }
 
@@ -276,10 +328,6 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
         resume.target = self
         menu.addItem(resume)
 
-        let restore = NSMenuItem(title: L10n.restoreDefault, action: #selector(restoreDefault), keyEquivalent: "")
-        restore.target = self
-        menu.addItem(restore)
-
         menu.addItem(.separator())
 
         let install = NSMenuItem(title: L10n.installHelper, action: #selector(installHelper), keyEquivalent: "")
@@ -314,12 +362,33 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
         button.toolTip = toolTip
     }
 
-    private func write(_ value: UInt8) {
+    private func write(_ value: UInt8, retryOnRateLimit: Bool = false) {
         do {
-            _ = try service.setBCLM(value, allowUnsupported: false)
+            let response = try service.setBCLM(value, allowUnsupported: false)
+            if !response.ok {
+                if retryOnRateLimit, isRateLimitError(response.error) {
+                    scheduleWriteRetry(value)
+                } else {
+                    showAlert(title: L10n.alertTitle(.writeFailed), message: response.error ?? L10n.helperError)
+                }
+                refreshStatus()
+                return
+            }
             refreshStatus()
         } catch {
             showAlert(title: L10n.alertTitle(.writeFailed), message: String(describing: error))
+        }
+    }
+
+    private func isRateLimitError(_ error: String?) -> Bool {
+        error?.localizedCaseInsensitiveContains("rate-limited") == true
+    }
+
+    private func scheduleWriteRetry(_ value: UInt8) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
+            Task { @MainActor in
+                self?.write(value, retryOnRateLimit: false)
+            }
         }
     }
 
@@ -329,7 +398,7 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
         }
 
         do {
-            let policy = try ChargeLimitPolicy(config: ChargeLimitConfig(targetPercent: targetPercent))
+            let policy = try ChargeLimitPolicy(config: menuBarPolicyConfig())
             let decision = try policy.decide(snapshot: battery, currentBCLM: response.bclm)
             if let value = decision.desiredSMCValue {
                 _ = try service.setBCLM(value, allowUnsupported: false)
@@ -345,6 +414,16 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
         alert.informativeText = message
         alert.alertStyle = .warning
         alert.runModal()
+    }
+
+    private func confirm(title: String, message: String) -> Bool {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: L10n.continueAction)
+        alert.addButton(withTitle: L10n.cancel)
+        return alert.runModal() == .alertFirstButtonReturn
     }
 
     private func runScript(named scriptName: String, arguments: [String] = [], completion: ((Bool) -> Void)? = nil) {
@@ -421,7 +500,7 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
                 }
                 return
             }
-            let policy = try ChargeLimitPolicy(config: ChargeLimitConfig(targetPercent: targetPercent))
+            let policy = try ChargeLimitPolicy(config: menuBarPolicyConfig())
             let decision = try policy.decide(snapshot: battery, currentBCLM: response.bclm)
             if let value = decision.desiredSMCValue {
                 _ = try service.setBCLM(value, allowUnsupported: false)
@@ -435,14 +514,29 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
     }
 
     @objc private func pauseCharging() {
-        write(15)
+        performManualChargeAction(value: 15, message: L10n.manualPauseMessage)
+    }
+
+    private func menuBarPolicyConfig() -> ChargeLimitConfig {
+        ChargeLimitConfig(targetPercent: targetPercent, resumeAtTargetPercent: true)
     }
 
     @objc private func resumeCharging() {
-        write(100)
+        performManualChargeAction(value: 100, message: L10n.manualResumeMessage)
     }
 
-    @objc private func restoreDefault() {
+    private func performManualChargeAction(value: UInt8, message: String) {
+        if isEnabled {
+            guard confirm(title: L10n.alertTitle(.manualActionDisablesLimit), message: message) else {
+                return
+            }
+            isEnabled = false
+            rebuildMenu(status: currentMenuStatus())
+        }
+        write(value, retryOnRateLimit: true)
+    }
+
+    private func restoreDefault() {
         do {
             _ = try service.restoreDefault(allowUnsupported: false)
             refreshStatus()
