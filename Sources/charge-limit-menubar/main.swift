@@ -20,7 +20,6 @@ private enum L10n {
     static var helperError: String { isChinese ? "Helper 错误" : "Helper error" }
     static var unsupportedOrUnverified: String { isChinese ? "不支持或未验证" : "Unsupported or unverified" }
     static var enableLimit: String { isChinese ? "启用充电限制" : "Enable Limit" }
-    static var applyPolicyNow: String { isChinese ? "立即应用策略" : "Apply Policy Now" }
     static var pauseCharging: String { isChinese ? "暂停充电" : "Pause Charging" }
     static var resumeCharging: String { isChinese ? "恢复充电" : "Resume Charging" }
     static var restoreDefault: String { isChinese ? "恢复默认充电" : "Restore Default" }
@@ -124,30 +123,29 @@ private enum MenuBarIcon {
         let size = NSSize(width: 18, height: 18)
         let image = NSImage(size: size, flipped: false) { _ in
             NSColor.black.setFill()
-            NSColor.black.setStroke()
 
             let bolt = NSBezierPath()
-            bolt.move(to: NSPoint(x: 8.3, y: 16.2))
-            bolt.line(to: NSPoint(x: 4.0, y: 9.2))
-            bolt.line(to: NSPoint(x: 8.1, y: 9.2))
-            bolt.line(to: NSPoint(x: 5.6, y: 1.8))
-            bolt.line(to: NSPoint(x: 11.1, y: 9.8))
-            bolt.lineCapStyle = .round
-            bolt.lineJoinStyle = .round
-            bolt.lineWidth = 3.3
-            bolt.stroke()
+            bolt.move(to: NSPoint(x: 7.7, y: 16.4))
+            bolt.line(to: NSPoint(x: 10.8, y: 16.4))
+            bolt.line(to: NSPoint(x: 8.5, y: 10.2))
+            bolt.line(to: NSPoint(x: 10.9, y: 10.2))
+            bolt.line(to: NSPoint(x: 5.0, y: 1.4))
+            bolt.line(to: NSPoint(x: 6.4, y: 8.3))
+            bolt.line(to: NSPoint(x: 3.2, y: 8.3))
+            bolt.close()
+            bolt.fill()
 
             let firstPause = NSBezierPath(
-                roundedRect: NSRect(x: 11.7, y: 3.3, width: 2.3, height: 11.4),
-                xRadius: 1.15,
-                yRadius: 1.15
+                roundedRect: NSRect(x: 12.3, y: 3.4, width: 2.1, height: 11.2),
+                xRadius: 1.05,
+                yRadius: 1.05
             )
             firstPause.fill()
 
             let secondPause = NSBezierPath(
-                roundedRect: NSRect(x: 15.0, y: 3.3, width: 2.3, height: 11.4),
-                xRadius: 1.15,
-                yRadius: 1.15
+                roundedRect: NSRect(x: 15.4, y: 3.4, width: 2.1, height: 11.2),
+                xRadius: 1.05,
+                yRadius: 1.05
             )
             secondPause.fill()
 
@@ -272,11 +270,6 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
         }
         target.submenu = targetMenu
         menu.addItem(target)
-
-        let apply = NSMenuItem(title: L10n.applyPolicyNow, action: #selector(applyPolicyNow), keyEquivalent: "")
-        apply.target = self
-        apply.isEnabled = isEnabled
-        menu.addItem(apply)
 
         menu.addItem(.separator())
 
@@ -409,24 +402,30 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
 
     @objc private func toggleEnabled() {
         isEnabled.toggle()
-        rebuildMenu(status: currentMenuStatus())
+        if isEnabled {
+            applyCurrentPolicy(showErrors: true)
+        } else {
+            restoreDefault()
+        }
     }
 
     @objc private func setTarget(_ sender: NSMenuItem) {
         if let value = sender.representedObject as? Int {
             targetPercent = value
-            rebuildMenu(status: currentMenuStatus())
+            applyCurrentPolicy(showErrors: true)
         }
     }
 
-    @objc private func applyPolicyNow() {
+    private func applyCurrentPolicy(showErrors: Bool) {
         guard isEnabled else {
             return
         }
         do {
             let response = try service.status()
             guard response.ok, let battery = response.battery else {
-                showAlert(title: L10n.alertTitle(.statusFailed), message: response.error ?? L10n.noBatteryData)
+                if showErrors {
+                    showAlert(title: L10n.alertTitle(.statusFailed), message: response.error ?? L10n.noBatteryData)
+                }
                 return
             }
             let policy = try ChargeLimitPolicy(config: ChargeLimitConfig(targetPercent: targetPercent))
@@ -436,7 +435,9 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
             }
             refreshStatus()
         } catch {
-            showAlert(title: L10n.alertTitle(.applyFailed), message: String(describing: error))
+            if showErrors {
+                showAlert(title: L10n.alertTitle(.applyFailed), message: String(describing: error))
+            }
         }
     }
 
