@@ -45,14 +45,18 @@ public enum ChargeStateResolver {
         if battery.fullyCharged == true {
             return .full
         }
-        if battery.chargingCurrent == 0 && battery.notChargingReason == 14 {
-            return .paused
-        }
-        if battery.isCharging == true || (battery.chargingCurrent ?? 0) > 0 {
+        if battery.isCharging == true {
             return .charging
         }
         if bclm == 15 {
             return .paused
+        }
+        if battery.chargingCurrent == 0 && battery.notChargingReason == 14 {
+            return .paused
+        }
+        if battery.isCharging == nil,
+           (battery.amperage ?? battery.instantAmperage ?? 0) > 0 {
+            return .charging
         }
         return .unknown
     }

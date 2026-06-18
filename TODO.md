@@ -128,9 +128,12 @@ Goal: build the user-facing app.
   not require a second click.
 - [x] Load 1x/2x menu bar PNG representations so the icon is crisp on Retina
   displays.
-- [x] Add experimental menu bar discharge-to-target behavior using raw SoC.
+- [x] Add experimental menu bar discharge-to-target behavior.
+- [x] Make discharge-to-target follow the user-visible macOS battery percentage,
+  with raw SoC used only as a lower safety floor.
+- [x] Show both visible and raw battery percentages in the menu status line.
 - [ ] Add unsupported hardware UI.
-- [ ] Add user-facing copy/status for active discharge-to-target mode.
+- [ ] Add fuller user-facing copy/status for active discharge-to-target mode.
 
 Acceptance criteria:
 
@@ -149,7 +152,10 @@ disconnect.
 - [x] Verify that with AC attached and `BCLM=15`, the battery can naturally
   discharge on `MacBookPro16,1`.
 - [x] Verify macOS UI SoC may lag raw SoC near 100%.
-- [x] Change discharge-to-target decisions to prefer `rawStateOfCharge`.
+- [x] Verify that preferring `rawStateOfCharge` as the target source can mislead
+  users when macOS still displays a higher battery percentage.
+- [x] Change discharge-to-target decisions to use visible macOS percentage as
+  the target source, with a raw SoC safety floor at `target - 2%`.
 - [x] Keep normal CLI/monitor hysteresis behavior unchanged by default.
 - [x] Add menu bar policy mode that writes `BCLM=15` above target and restores
   `BCLM=100` at or below target.
@@ -162,18 +168,18 @@ disconnect.
   - [x] `CH0J`
 - [x] Decide not to pursue simulated charger disconnect on the validated model.
 - [ ] Finish long-running real-world validation from 100% toward target 90%.
-- [ ] Confirm the app restores `BCLM=100` when raw SoC reaches 90.
-- [ ] Record whether the displayed UI SoC catches up after raw SoC reaches
-  target.
-- [ ] Add logs/status so users can see raw SoC vs UI SoC during discharge.
+- [ ] Confirm the app restores `BCLM=100` when visible SoC reaches target 90.
+- [ ] Confirm the raw SoC safety floor restores `BCLM=100` if visible SoC stays
+  stale above target.
+- [x] Add menu status so users can see raw SoC vs visible SoC during discharge.
 - [ ] Decide whether discharge-to-target should be always-on, optional, or an
   advanced setting.
 
 Acceptance criteria:
 
-- [ ] Starting above target, the app holds `BCLM=15` while raw SoC is above
-  target.
-- [ ] At or below target, the app restores `BCLM=100`.
+- [ ] Starting above target, the app holds `BCLM=15` while visible SoC is above
+  target, unless raw SoC reaches the safety floor first.
+- [ ] At or below the visible target, the app restores `BCLM=100`.
 - [ ] The behavior does not continue discharging below target except for normal
   sensor/reporting lag.
 - [ ] User can recover normal charging without quitting the app.

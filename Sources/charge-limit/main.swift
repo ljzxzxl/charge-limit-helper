@@ -135,6 +135,51 @@ private func selfTest() throws {
     let hold = try policy.decide(snapshot: BatterySnapshot(uiStateOfCharge: 81), currentBCLM: 15)
     expect(hold.desiredSMCValue == nil, "should hold inside hysteresis window")
 
+    let dischargePolicy = try ChargeLimitPolicy(config: ChargeLimitConfig(targetPercent: 90, resumeAtTargetPercent: true))
+
+    let discharge = try dischargePolicy.decide(
+        snapshot: BatterySnapshot(uiStateOfCharge: 96, rawStateOfCharge: 91),
+        currentBCLM: 100
+    )
+    expect(discharge.desiredSMCValue == 15, "should discharge while visible percentage is above target")
+
+    let visibleTargetReached = try dischargePolicy.decide(
+        snapshot: BatterySnapshot(uiStateOfCharge: 90, rawStateOfCharge: 92),
+        currentBCLM: 15
+    )
+    expect(visibleTargetReached.desiredSMCValue == 100, "should stop discharging when visible target is reached")
+
+    let rawSafety = try dischargePolicy.decide(
+        snapshot: BatterySnapshot(uiStateOfCharge: 95, rawStateOfCharge: 88),
+        currentBCLM: 15
+    )
+    expect(rawSafety.desiredSMCValue == 100, "should stop discharging at the raw safety floor")
+
+    let pausedWithAdapterCurrent = ChargeStateResolver.resolve(
+        battery: BatterySnapshot(
+            isCharging: false,
+            externalConnected: true,
+            fullyCharged: false,
+            chargingCurrent: 3840,
+            notChargingReason: 0,
+            amperage: -819,
+            instantAmperage: -875
+        ),
+        bclm: 15
+    )
+    expect(pausedWithAdapterCurrent == .paused, "should report paused when BCLM is 15 and battery is not charging")
+
+    let activelyCharging = ChargeStateResolver.resolve(
+        battery: BatterySnapshot(
+            isCharging: true,
+            externalConnected: true,
+            fullyCharged: false,
+            chargingCurrent: 3840
+        ),
+        bclm: 100
+    )
+    expect(activelyCharging == .charging, "should report charging when the battery is actively charging")
+
     do {
         _ = try ChargeLimitConfig(targetPercent: 40).validated()
         expect(false, "should reject invalid target")

@@ -56,6 +56,18 @@ private enum L10n {
         isChinese ? "目标电量：\(value)%" : "Target: \(value)%"
     }
 
+    static func status(uiPercent: String, rawPercent: String?, targetPercent: Int, state: String, bclm: String) -> String {
+        if let rawPercent {
+            return isChinese
+                ? "系统 \(uiPercent) · 底层 \(rawPercent) · 目标 \(targetPercent)% · \(state) · BCLM \(bclm)"
+                : "UI \(uiPercent) · Raw \(rawPercent) · Target \(targetPercent)% · \(state) · BCLM \(bclm)"
+        }
+
+        return isChinese
+            ? "系统 \(uiPercent) · 目标 \(targetPercent)% · \(state) · BCLM \(bclm)"
+            : "UI \(uiPercent) · Target \(targetPercent)% · \(state) · BCLM \(bclm)"
+    }
+
     static func chargeState(_ state: ChargeState?) -> String {
         switch state {
         case .charging:
@@ -263,9 +275,16 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
     }
 
     private func statusText(for response: HelperResponse) -> String {
-        let percent = response.battery?.uiStateOfCharge.map { "\($0)%" } ?? "--"
-        let state = L10n.chargeState(response.chargeState)
-        return "\(percent) · \(state) · BCLM \(response.bclm.map(String.init) ?? "?")"
+        let uiPercent = response.battery?.uiStateOfCharge.map { "\($0)%" } ?? "--"
+        let rawPercent = response.battery?.rawStateOfCharge.map { "\($0)%" }
+        let state = L10n.chargeState(ChargeStateResolver.resolve(battery: response.battery, bclm: response.bclm))
+        return L10n.status(
+            uiPercent: uiPercent,
+            rawPercent: rawPercent,
+            targetPercent: targetPercent,
+            state: state,
+            bclm: response.bclm.map(String.init) ?? "?"
+        )
     }
 
     private func currentMenuStatus() -> String {

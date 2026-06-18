@@ -51,8 +51,10 @@ Important interpretation:
   pause after the desired target is reached.
 - The MVP policy is therefore: write `100` to allow charge, write `15` to pause.
 - macOS UI battery percentage can lag behind the raw battery gauge near 100%.
-  For discharge-to-target behavior, prefer `rawStateOfCharge` when deciding
-  whether the target has been reached.
+  From v0.1.8 onward, discharge-to-target treats the user-visible macOS
+  percentage as the target source of truth. The raw battery gauge is only a
+  safety floor, currently `target - 2%`, so the app does not keep discharging if
+  the visible percentage is stale.
 
 Active discharge validation:
 
@@ -63,8 +65,10 @@ Active discharge validation:
   even when executed with administrator privileges.
 - Do not pursue the simulated-charger-disconnect approach for this model unless
   there is a new, well-contained validation plan.
-- The current preferred approach is to keep `BCLM=15` while raw SoC is above
-  the target, then restore `BCLM=100` once raw SoC reaches the target.
+- The current preferred approach is to keep `BCLM=15` while the macOS visible
+  battery percentage is above the target, then restore `BCLM=100` once the
+  visible percentage reaches the target. If raw SoC reaches the safety floor
+  first, restore `BCLM=100` early.
 
 ## Current Architecture
 
@@ -101,8 +105,9 @@ Swift Package products:
   - Shows status and target controls.
   - Calls the current helper transport through `SocketChargeLimitService`.
   - Uses the discharge-to-target policy path: if charge limiting is enabled and
-    raw SoC is above the target, it holds `BCLM=15`; once raw SoC reaches the
-    target, it writes `BCLM=100`.
+    the visible battery percentage is above the target, it holds `BCLM=15`;
+    once the visible percentage reaches the target, it writes `BCLM=100`.
+    Raw SoC is shown in the menu and used as a lower safety floor.
   - Menu bar icon uses both 1x and 2x PNG representations so it stays sharp on
     Retina displays.
   - Manual Pause Charging / Resume Charging disables automatic charge limiting
@@ -197,10 +202,12 @@ Safe final state should normally be `BCLM=100` when not actively validating, or
 Recommended next milestone: turn the current validation app into a safer
 downloadable development release.
 
-1. Finish validating discharge-to-target with target 90% on `MacBookPro16,1`.
+1. Finish validating discharge-to-target with target 90% on `MacBookPro16,1`
+   using the v0.1.8 visible-percent-primary policy.
 2. Decide whether the raw SMC validation commands should remain in the helper,
    be hidden behind a development flag, or be removed before the next release.
-3. Add clearer UI/status copy for active discharge-to-target mode.
+3. Add clearer UI/status copy for active discharge-to-target mode beyond the
+   current status line that displays visible and raw percentages.
 4. Add fallback recovery documentation.
 5. Broaden validation to at least one more Intel MacBook model.
 
@@ -224,9 +231,9 @@ After that, move toward a public app:
 - No signed/notarized release.
 - No broad model compatibility matrix.
 - No automatic recovery service if SMC state is externally changed.
-- Discharge-to-target has only been validated on one machine so far. It depends
-  on raw SoC behavior and should be treated as experimental until more machines
-  are tested.
+- Discharge-to-target has only been validated on one machine so far. The target
+  decision now follows the visible macOS percentage, with raw SoC used as a
+  safety floor, but the full behavior still needs broader hardware testing.
 - Development raw SMC commands are intentionally whitelist-limited but are still
   privileged hardware controls. They should not be exposed in the production UI.
 

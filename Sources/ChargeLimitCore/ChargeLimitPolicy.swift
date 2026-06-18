@@ -8,6 +8,7 @@ public struct ChargeLimitConfig: Codable, Equatable {
     public var chargeSMCValue: UInt8
     public var pollIntervalSeconds: UInt64
     public var resumeAtTargetPercent: Bool
+    public var rawDischargeSafetyMarginPercent: Int
 
     public init(
         enabled: Bool = true,
@@ -16,7 +17,8 @@ public struct ChargeLimitConfig: Codable, Equatable {
         pauseSMCValue: UInt8 = 15,
         chargeSMCValue: UInt8 = 100,
         pollIntervalSeconds: UInt64 = 30,
-        resumeAtTargetPercent: Bool = false
+        resumeAtTargetPercent: Bool = false,
+        rawDischargeSafetyMarginPercent: Int = 2
     ) {
         self.enabled = enabled
         self.targetPercent = targetPercent
@@ -25,6 +27,7 @@ public struct ChargeLimitConfig: Codable, Equatable {
         self.chargeSMCValue = chargeSMCValue
         self.pollIntervalSeconds = pollIntervalSeconds
         self.resumeAtTargetPercent = resumeAtTargetPercent
+        self.rawDischargeSafetyMarginPercent = rawDischargeSafetyMarginPercent
     }
 
     public func validated() throws -> ChargeLimitConfig {
@@ -33,6 +36,9 @@ public struct ChargeLimitConfig: Codable, Equatable {
         }
         guard (1...20).contains(hysteresisPercent) else {
             throw ChargeLimitPolicyError.invalidHysteresis(hysteresisPercent)
+        }
+        guard (0...20).contains(rawDischargeSafetyMarginPercent) else {
+            throw ChargeLimitPolicyError.invalidRawDischargeSafetyMargin(rawDischargeSafetyMarginPercent)
         }
         guard pauseSMCValue < chargeSMCValue else {
             throw ChargeLimitPolicyError.invalidSMCValues
@@ -44,6 +50,7 @@ public struct ChargeLimitConfig: Codable, Equatable {
 public enum ChargeLimitPolicyError: Error, CustomStringConvertible {
     case invalidTarget(Int)
     case invalidHysteresis(Int)
+    case invalidRawDischargeSafetyMargin(Int)
     case invalidSMCValues
     case missingBatteryPercent
 
@@ -53,6 +60,8 @@ public enum ChargeLimitPolicyError: Error, CustomStringConvertible {
             return "Target percent must be between 50 and 100, got \(value)"
         case .invalidHysteresis(let value):
             return "Hysteresis percent must be between 1 and 20, got \(value)"
+        case .invalidRawDischargeSafetyMargin(let value):
+            return "Raw discharge safety margin must be between 0 and 20, got \(value)"
         case .invalidSMCValues:
             return "Pause SMC value must be lower than charge SMC value"
         case .missingBatteryPercent:
@@ -98,18 +107,27 @@ public struct ChargeLimitPolicy {
         }
 
         if config.resumeAtTargetPercent {
-            let dischargePercent = snapshot.rawStateOfCharge ?? percent
-            if dischargePercent > config.targetPercent {
-                if currentBCLM == config.pauseSMCValue {
-                    return .hold(reason: "already discharging above target")
+            if let rawPercent = snapshot.rawStateOfCharge {
+                let rawSafetyPercent = max(0, config.targetPercent - config.rawDischargeSafetyMarginPercent)
+                if rawPercent <= rawSafetyPercent {
+                    if currentBCLM == config.chargeSMCValue {
+                        return .hold(reason: "already allowing charge at raw safety floor \(rawSafetyPercent)%")
+                    }
+                    return .write(config.chargeSMCValue, reason: "raw battery reached safety floor \(rawSafetyPercent)%")
                 }
-                return .write(config.pauseSMCValue, reason: "battery is above target \(config.targetPercent)%")
+            }
+
+            if percent > config.targetPercent {
+                if currentBCLM == config.pauseSMCValue {
+                    return .hold(reason: "already discharging above visible target")
+                }
+                return .write(config.pauseSMCValue, reason: "visible battery is above target \(config.targetPercent)%")
             }
 
             if currentBCLM == config.chargeSMCValue {
                 return .hold(reason: "already allowing charge at or below target")
             }
-            return .write(config.chargeSMCValue, reason: "battery reached discharge target \(config.targetPercent)%")
+            return .write(config.chargeSMCValue, reason: "visible battery reached discharge target \(config.targetPercent)%")
         } else {
             if percent >= config.targetPercent {
                 if currentBCLM == config.pauseSMCValue {
