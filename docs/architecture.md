@@ -43,3 +43,6 @@ For a public app, prefer:
 
 Apple documents `SMAppService` for registering app helpers on macOS 13 and
 later. Older privileged helper examples often use `SMJobBless`.
+
+See `docs/production-ipc.md` for the migration plan from the MVP Unix socket to
+the final XPC transport.

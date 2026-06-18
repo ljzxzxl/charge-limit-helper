@@ -71,7 +71,13 @@ Swift Package products:
 
 - `charge-limit`
   - Developer CLI.
-  - Commands: `doctor`, `self-test`, `status`, `pause`, `resume`, `set-bclm`.
+  - Commands: `doctor`, `self-test`, `status`, `pause`, `resume`,
+    `restore-default`, `set-bclm`, `logs`.
+
+- `charge-limit-menubar`
+  - Development menu bar UI scaffold.
+  - Shows status and target controls.
+  - Calls the current helper transport through `SocketChargeLimitService`.
 
 Supporting files:
 
@@ -89,6 +95,7 @@ Known-good commands:
 swift build -c release
 .build/release/charge-limit self-test
 .build/release/charge-limit doctor
+.build/release/charge-limit-helperd status
 plutil -lint packaging/launchd/*.plist
 ```
 
@@ -202,6 +209,12 @@ Run monitor:
 .build/release/charge-limit-monitor --target 82 --verbose
 ```
 
+Run development menu bar scaffold:
+
+```sh
+.build/release/charge-limit-menubar
+```
+
 Install development helper:
 
 ```sh
@@ -223,5 +236,6 @@ Uninstall development helper:
 - `Sources/ChargeLimitHelper/main.swift`: root helper daemon.
 - `Sources/charge-limit-monitor/main.swift`: user-space monitor.
 - `Sources/charge-limit/main.swift`: developer CLI.
+- `Sources/charge-limit-menubar/main.swift`: development menu bar scaffold.
 - `docs/validation.md`: hardware validation notes.
 - `docs/architecture.md`: architecture notes.

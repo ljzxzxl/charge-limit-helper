@@ -7,6 +7,7 @@ private struct Options {
     var interval: UInt64 = 30
     var once = false
     var verbose = false
+    var allowUnsupported = false
 }
 
 private func usage() {
@@ -14,7 +15,7 @@ private func usage() {
     charge-limit-monitor
 
     Usage:
-      charge-limit-monitor --target <50-100> [--hysteresis <1-20>] [--interval <seconds>] [--once] [--verbose]
+      charge-limit-monitor --target <50-100> [--hysteresis <1-20>] [--interval <seconds>] [--once] [--verbose] [--unsafe-allow-unsupported]
 
     The monitor talks to charge-limit-helperd over its local Unix socket.
     It writes BCLM=100 below the resume threshold and BCLM=15 at or above target.
@@ -53,6 +54,8 @@ private func parseOptions() -> Options {
             options.once = true
         case "--verbose":
             options.verbose = true
+        case "--unsafe-allow-unsupported":
+            options.allowUnsupported = true
         case "--help", "-h":
             usage()
             exit(0)
@@ -72,11 +75,15 @@ private func log(_ message: String) {
     fflush(stdout)
 }
 
-private func runOnce(client: HelperClient, policy: ChargeLimitPolicy, verbose: Bool) {
+private func runOnce(client: HelperClient, policy: ChargeLimitPolicy, verbose: Bool, allowUnsupported: Bool) {
     do {
         let status = try client.status()
         guard status.ok else {
             log("helper error: \(status.error ?? "unknown error")")
+            return
+        }
+        if let compatibility = status.compatibility, !compatibility.isSupported, !allowUnsupported {
+            log("unsupported machine: \(compatibility.summary)")
             return
         }
         guard let battery = status.battery else {
@@ -86,14 +93,14 @@ private func runOnce(client: HelperClient, policy: ChargeLimitPolicy, verbose: B
 
         let decision = try policy.decide(snapshot: battery, currentBCLM: status.bclm)
         if verbose {
-            log("ui=\(battery.uiStateOfCharge.map(String.init) ?? "?") bclm=\(status.bclm.map(String.init) ?? "?") decision=\(decision.reason)")
+            log("ui=\(battery.uiStateOfCharge.map(String.init) ?? "?") state=\(status.chargeState?.rawValue ?? "?") bclm=\(status.bclm.map(String.init) ?? "?") decision=\(decision.reason)")
         }
 
         guard let desired = decision.desiredSMCValue else {
             return
         }
 
-        let write = try client.setBCLM(desired)
+        let write = try client.setBCLM(desired, allowUnsupported: allowUnsupported)
         if write.ok {
             log("wrote BCLM=\(write.bclm ?? desired): \(decision.reason)")
         } else {
@@ -115,9 +122,9 @@ do {
     let policy = try ChargeLimitPolicy(config: config)
     let client = HelperClient()
 
-    log("monitor started target=\(config.targetPercent)% resume<=\(config.targetPercent - config.hysteresisPercent)% interval=\(config.pollIntervalSeconds)s")
+    log("monitor started target=\(config.targetPercent)% resume<=\(config.targetPercent - config.hysteresisPercent)% interval=\(config.pollIntervalSeconds)s allowUnsupported=\(options.allowUnsupported)")
     repeat {
-        runOnce(client: client, policy: policy, verbose: options.verbose)
+        runOnce(client: client, policy: policy, verbose: options.verbose, allowUnsupported: options.allowUnsupported)
         if options.once {
             break
         }

@@ -9,6 +9,7 @@ limit on Intel MacBooks:
 - `BCLM=15` pauses charging after the target UI battery percentage is reached.
 - A user-space monitor decides when to switch between those two states.
 - A root helper daemon performs the actual AppleSMC write.
+- A development menu bar executable provides a first UI scaffold.
 
 The project is intentionally split into small pieces so it can grow into a
 proper menu bar macOS app later.
@@ -57,12 +58,20 @@ In another terminal:
 .build/release/charge-limit status
 .build/release/charge-limit resume
 .build/release/charge-limit pause
+.build/release/charge-limit restore-default
+.build/release/charge-limit logs
 ```
 
 Run the monitor with an 82% target:
 
 ```sh
 .build/release/charge-limit-monitor --target 82 --verbose
+```
+
+Run the development menu bar scaffold:
+
+```sh
+.build/release/charge-limit-menubar
 ```
 
 ## Install Helper for Development
@@ -81,6 +90,12 @@ Remove it with:
 
 ```sh
 ./scripts/uninstall-helper.sh
+```
+
+Install helper and a user LaunchAgent monitor for development:
+
+```sh
+./scripts/install-helper.sh --with-monitor --target 82
 ```
 
 ## Architecture

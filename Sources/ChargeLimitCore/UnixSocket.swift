@@ -60,8 +60,12 @@ public struct HelperClient {
         try send(HelperRequest(command: .status))
     }
 
-    public func setBCLM(_ value: UInt8) throws -> HelperResponse {
-        try send(HelperRequest(command: .setBCLM, value: value))
+    public func setBCLM(_ value: UInt8, allowUnsupported: Bool = false) throws -> HelperResponse {
+        try send(HelperRequest(command: .setBCLM, value: value, allowUnsupported: allowUnsupported))
+    }
+
+    public func restoreDefault(allowUnsupported: Bool = false) throws -> HelperResponse {
+        try send(HelperRequest(command: .restoreDefault, allowUnsupported: allowUnsupported))
     }
 }
 

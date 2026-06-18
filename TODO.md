@@ -33,8 +33,9 @@ loop works without AlDente.
 - [ ] Verify `charge-limit-monitor --target 82 --verbose` pauses at 82%.
 - [ ] Verify monitor resumes charging after battery drops below target minus hysteresis.
 - [ ] Add uninstall behavior that restores `BCLM=100` before removing helper.
-- [ ] Add clearer logs for helper startup, writes, and failures.
-- [ ] Add a `charge-limit logs` or documented log inspection command.
+- [x] Add uninstall behavior that restores `BCLM=100` before removing helper.
+- [x] Add clearer logs for helper startup, writes, and failures.
+- [x] Add a `charge-limit logs` or documented log inspection command.
 
 Acceptance criteria:
 
@@ -47,16 +48,16 @@ Acceptance criteria:
 
 Goal: prevent unsupported hardware or bad states from being modified.
 
-- [ ] Detect machine model identifier.
-- [ ] Detect Intel architecture.
-- [ ] Detect `AppleSMC` availability.
-- [ ] Detect `AppleSmartBattery` availability.
-- [ ] Detect whether `BCLM` can be read.
-- [ ] Add compatibility report to `charge-limit doctor`.
-- [ ] Refuse writes on unsupported machines by default.
-- [ ] Add an explicit unsafe override flag for development only.
-- [ ] Rate-limit repeated SMC writes.
-- [ ] Track last written value to avoid redundant writes.
+- [x] Detect machine model identifier.
+- [x] Detect Intel architecture.
+- [x] Detect `AppleSMC` availability.
+- [x] Detect `AppleSmartBattery` availability.
+- [x] Detect whether `BCLM` can be read.
+- [x] Add compatibility report to `charge-limit doctor`.
+- [x] Refuse writes on unsupported machines by default.
+- [x] Add an explicit unsafe override flag for development only.
+- [x] Rate-limit repeated SMC writes.
+- [x] Track last written value to avoid redundant writes.
 - [ ] Restore `BCLM=100` on helper shutdown where practical.
 - [ ] Add fallback recovery documentation.
 - [ ] Add model compatibility table in docs.
@@ -71,9 +72,10 @@ Acceptance criteria:
 
 Goal: move from development Unix socket to a production-safe helper interface.
 
-- [ ] Research final IPC choice:
-  - [ ] XPC Mach service from LaunchDaemon.
-  - [ ] ServiceManagement helper registration.
+- [x] Research final IPC choice:
+  - [x] XPC Mach service from LaunchDaemon.
+  - [x] ServiceManagement helper registration.
+- [x] Add transport abstraction for swapping Unix socket with XPC.
 - [ ] Replace JSON-over-Unix-socket transport with XPC.
 - [ ] Validate connecting client code signature.
 - [ ] Require matching team identifier / designated requirement.
@@ -94,21 +96,21 @@ Acceptance criteria:
 
 Goal: build the user-facing app.
 
-- [ ] Create app target.
-- [ ] Add menu bar status item.
-- [ ] Display current battery percentage.
-- [ ] Display current charge state:
-  - [ ] Charging
-  - [ ] Paused
-  - [ ] On battery
-  - [ ] Error / unsupported
-- [ ] Add target percentage control.
-- [ ] Add enable/disable charge limiting toggle.
-- [ ] Add helper install/update/remove flow.
+- [x] Create app target.
+- [x] Add menu bar status item.
+- [x] Display current battery percentage.
+- [x] Display current charge state:
+  - [x] Charging
+  - [x] Paused
+  - [x] On battery
+  - [x] Error / unsupported
+- [x] Add target percentage control.
+- [x] Add enable/disable charge limiting toggle.
+- [x] Add helper install/update/remove flow.
 - [ ] Add launch-at-login toggle.
-- [ ] Add settings persistence.
-- [ ] Add safe restore button: write `BCLM=100`.
-- [ ] Add logs / diagnostics export.
+- [x] Add settings persistence.
+- [x] Add safe restore button: write `BCLM=100`.
+- [x] Add logs / diagnostics export.
 - [ ] Add first-run warning explaining low-level battery control.
 - [ ] Add unsupported hardware UI.
 

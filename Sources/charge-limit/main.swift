@@ -10,7 +10,9 @@ private func usage() {
       charge-limit pause
       charge-limit resume
       charge-limit set-bclm <value>
+      charge-limit restore-default
       charge-limit doctor
+      charge-limit logs
       charge-limit self-test
 
     Commands:
@@ -18,8 +20,15 @@ private func usage() {
       pause           Write BCLM=15 via helper.
       resume          Write BCLM=100 via helper.
       set-bclm        Write an explicit BCLM value via helper.
+      restore-default Write BCLM=100 via helper.
       doctor          Read local battery/SMC state without using the helper.
+      logs            Print known helper and monitor logs.
       self-test       Run policy checks without touching hardware.
+
+    Options:
+      --unsafe-allow-unsupported
+                      Allow writes on unsupported or unverified machines.
+                      Intended for development only.
     """)
 }
 
@@ -46,6 +55,8 @@ private struct DoctorReport: Codable {
     var localBCLMError: String?
     var battery: BatterySnapshot?
     var batteryError: String?
+    var compatibility: CompatibilityReport
+    var chargeState: ChargeState
 }
 
 private func doctor() -> DoctorReport {
@@ -71,8 +82,38 @@ private func doctor() -> DoctorReport {
         localBCLM: bclm,
         localBCLMError: smcError,
         battery: battery,
-        batteryError: batteryError
+        batteryError: batteryError,
+        compatibility: CompatibilityChecker.report(),
+        chargeState: ChargeStateResolver.resolve(battery: battery, bclm: bclm)
     )
+}
+
+private func printLogs() {
+    let paths = [
+        ChargeLimitPaths.helperLogPath,
+        "/Library/Logs/ChargeLimitHelper/helper.log",
+        "/Library/Logs/ChargeLimitHelper/helper.err.log",
+        ChargeLimitPaths.monitorLogPath,
+        "/tmp/charge-limit-monitor.err.log"
+    ]
+
+    for path in paths {
+        print("==> \(path)")
+        guard FileManager.default.fileExists(atPath: path) else {
+            print("(missing)")
+            continue
+        }
+        do {
+            let text = try String(contentsOfFile: path, encoding: .utf8)
+            let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
+            let tail = lines.suffix(80)
+            for line in tail {
+                print(line)
+            }
+        } catch {
+            print("could not read: \(String(describing: error))")
+        }
+    }
 }
 
 private func expect(_ condition: @autoclosure () -> Bool, _ message: String) {
@@ -111,23 +152,29 @@ guard let command = args.first else {
 }
 
 let client = HelperClient()
+let allowUnsupported = args.contains("--unsafe-allow-unsupported")
 
 do {
     switch command {
     case "status":
         requireOK(try client.status())
     case "pause":
-        requireOK(try client.setBCLM(15))
+        requireOK(try client.setBCLM(15, allowUnsupported: allowUnsupported))
     case "resume":
-        requireOK(try client.setBCLM(100))
+        requireOK(try client.setBCLM(100, allowUnsupported: allowUnsupported))
     case "set-bclm":
-        guard args.count == 2, let value = UInt8(args[1]) else {
+        guard let valueArgument = args.dropFirst().first(where: { !$0.hasPrefix("--") }),
+              let value = UInt8(valueArgument) else {
             usage()
             exit(2)
         }
-        requireOK(try client.setBCLM(value))
+        requireOK(try client.setBCLM(value, allowUnsupported: allowUnsupported))
+    case "restore-default":
+        requireOK(try client.restoreDefault(allowUnsupported: allowUnsupported))
     case "doctor":
         printJSON(doctor())
+    case "logs":
+        printLogs()
     case "self-test":
         try selfTest()
     default:

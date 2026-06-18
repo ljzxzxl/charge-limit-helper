@@ -11,7 +11,8 @@ let package = Package(
         .library(name: "ChargeLimitCore", targets: ["ChargeLimitCore"]),
         .executable(name: "charge-limit-helperd", targets: ["ChargeLimitHelper"]),
         .executable(name: "charge-limit", targets: ["ChargeLimitCLI"]),
-        .executable(name: "charge-limit-monitor", targets: ["ChargeLimitMonitor"])
+        .executable(name: "charge-limit-monitor", targets: ["ChargeLimitMonitor"]),
+        .executable(name: "charge-limit-menubar", targets: ["ChargeLimitMenuBar"])
     ],
     targets: [
         .target(
@@ -33,6 +34,14 @@ let package = Package(
             name: "ChargeLimitMonitor",
             dependencies: ["ChargeLimitCore"],
             path: "Sources/charge-limit-monitor"
+        ),
+        .executableTarget(
+            name: "ChargeLimitMenuBar",
+            dependencies: ["ChargeLimitCore"],
+            path: "Sources/charge-limit-menubar",
+            linkerSettings: [
+                .linkedFramework("AppKit")
+            ]
         )
     ]
 )

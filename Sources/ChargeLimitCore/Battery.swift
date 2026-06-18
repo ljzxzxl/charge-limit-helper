@@ -1,7 +1,7 @@
 import Foundation
 import IOKit
 
-public struct BatterySnapshot: Codable, Equatable {
+public struct BatterySnapshot: Codable, Equatable, Sendable {
     public var uiStateOfCharge: Int?
     public var rawStateOfCharge: Int?
     public var currentCapacity: Int?
