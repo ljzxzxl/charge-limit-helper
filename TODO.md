@@ -132,8 +132,12 @@ Goal: build the user-facing app.
 - [x] Make discharge-to-target follow the user-visible macOS battery percentage,
   with raw SoC used only as a lower safety floor.
 - [x] Show both visible and raw battery percentages in the menu status line.
+- [x] Split menu status into compact state, battery, and compatibility lines.
+- [x] Show active discharge-to-target as "正在放电" / "Discharging" when the
+  visible percentage is above the target and battery telemetry indicates no
+  battery charge current.
 - [ ] Add unsupported hardware UI.
-- [ ] Add fuller user-facing copy/status for active discharge-to-target mode.
+- [ ] Add fuller diagnostics/status for active discharge-to-target mode.
 
 Acceptance criteria:
 
@@ -157,8 +161,8 @@ disconnect.
 - [x] Change discharge-to-target decisions to use visible macOS percentage as
   the target source, with a raw SoC safety floor at `target - 2%`.
 - [x] Keep normal CLI/monitor hysteresis behavior unchanged by default.
-- [x] Add menu bar policy mode that writes `BCLM=15` above target and restores
-  `BCLM=100` at or below target.
+- [x] Add menu bar policy mode that writes `BCLM=15` at/above target and
+  restores `BCLM=100` below the hysteresis threshold or at the raw safety floor.
 - [x] Probe common adapter-disconnect keys:
   - [x] `CH0B`
   - [x] `CH0C`
@@ -168,7 +172,9 @@ disconnect.
   - [x] `CH0J`
 - [x] Decide not to pursue simulated charger disconnect on the validated model.
 - [ ] Finish long-running real-world validation from 100% toward target 90%.
-- [ ] Confirm the app restores `BCLM=100` when visible SoC reaches target 90.
+- [x] Confirm the app keeps `BCLM=15` at visible target 90 instead of resuming
+  charging immediately.
+- [ ] Confirm the app restores `BCLM=100` below the hysteresis threshold.
 - [ ] Confirm the raw SoC safety floor restores `BCLM=100` if visible SoC stays
   stale above target.
 - [x] Add menu status so users can see raw SoC vs visible SoC during discharge.
@@ -179,7 +185,8 @@ Acceptance criteria:
 
 - [ ] Starting above target, the app holds `BCLM=15` while visible SoC is above
   target, unless raw SoC reaches the safety floor first.
-- [ ] At or below the visible target, the app restores `BCLM=100`.
+- [ ] At the visible target, the app keeps `BCLM=15`; below the hysteresis
+  threshold, it restores `BCLM=100`.
 - [ ] The behavior does not continue discharging below target except for normal
   sensor/reporting lag.
 - [ ] User can recover normal charging without quitting the app.

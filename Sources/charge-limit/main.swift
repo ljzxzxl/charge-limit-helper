@@ -145,9 +145,15 @@ private func selfTest() throws {
 
     let visibleTargetReached = try dischargePolicy.decide(
         snapshot: BatterySnapshot(uiStateOfCharge: 90, rawStateOfCharge: 92),
+        currentBCLM: 100
+    )
+    expect(visibleTargetReached.desiredSMCValue == 15, "should pause at the visible target")
+
+    let belowDischargeTarget = try dischargePolicy.decide(
+        snapshot: BatterySnapshot(uiStateOfCharge: 85, rawStateOfCharge: 85),
         currentBCLM: 15
     )
-    expect(visibleTargetReached.desiredSMCValue == 100, "should stop discharging when visible target is reached")
+    expect(belowDischargeTarget.desiredSMCValue == 100, "should resume charging below the hysteresis threshold")
 
     let rawSafety = try dischargePolicy.decide(
         snapshot: BatterySnapshot(uiStateOfCharge: 95, rawStateOfCharge: 88),

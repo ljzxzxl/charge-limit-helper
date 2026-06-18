@@ -68,6 +68,26 @@ private enum L10n {
             : "UI \(uiPercent) · Target \(targetPercent)% · \(state) · BCLM \(bclm)"
     }
 
+    static func stateStatus(_ state: String, bclm: String) -> String {
+        isChinese ? "状态：\(state) · BCLM \(bclm)" : "Status: \(state) · BCLM \(bclm)"
+    }
+
+    static var dischargingToTarget: String {
+        isChinese ? "正在放电" : "Discharging"
+    }
+
+    static func batteryStatus(uiPercent: String, rawPercent: String?) -> String {
+        if let rawPercent {
+            return isChinese
+                ? "电量：系统 \(uiPercent) · 底层 \(rawPercent)"
+                : "Battery: UI \(uiPercent) · Raw \(rawPercent)"
+        }
+
+        return isChinese
+            ? "电量：系统 \(uiPercent)"
+            : "Battery: UI \(uiPercent)"
+    }
+
     static func chargeState(_ state: ChargeState?) -> String {
         switch state {
         case .charging:
@@ -262,7 +282,7 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
                 applyPolicyIfNeeded(response: response)
                 let status = statusText(for: response)
                 configureStatusItem(toolTip: status)
-                rebuildMenu(status: status)
+                rebuildMenu(statusLines: menuStatusLines(for: response))
             } else {
                 let status = response.error ?? L10n.helperError
                 configureStatusItem(toolTip: status)
@@ -277,7 +297,7 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
     private func statusText(for response: HelperResponse) -> String {
         let uiPercent = response.battery?.uiStateOfCharge.map { "\($0)%" } ?? "--"
         let rawPercent = response.battery?.rawStateOfCharge.map { "\($0)%" }
-        let state = L10n.chargeState(ChargeStateResolver.resolve(battery: response.battery, bclm: response.bclm))
+        let state = displayState(for: response)
         return L10n.status(
             uiPercent: uiPercent,
             rawPercent: rawPercent,
@@ -287,22 +307,68 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
         )
     }
 
-    private func currentMenuStatus() -> String {
+    private func menuStatusLines(for response: HelperResponse) -> [String] {
+        let uiPercent = response.battery?.uiStateOfCharge.map { "\($0)%" } ?? "--"
+        let rawPercent = response.battery?.rawStateOfCharge.map { "\($0)%" }
+        let state = displayState(for: response)
+        let bclm = response.bclm.map(String.init) ?? "?"
+        return [
+            L10n.stateStatus(state, bclm: bclm),
+            L10n.batteryStatus(uiPercent: uiPercent, rawPercent: rawPercent)
+        ]
+    }
+
+    private func displayState(for response: HelperResponse) -> String {
+        if isDischargingToTarget(response) {
+            return L10n.dischargingToTarget
+        }
+
+        return L10n.chargeState(ChargeStateResolver.resolve(battery: response.battery, bclm: response.bclm))
+    }
+
+    private func isDischargingToTarget(_ response: HelperResponse) -> Bool {
+        guard isEnabled,
+              response.bclm == 15,
+              let battery = response.battery,
+              battery.externalConnected == true,
+              let uiPercent = battery.uiStateOfCharge else {
+            return false
+        }
+
+        guard uiPercent > targetPercent else {
+            return false
+        }
+
+        let batteryAmperage = battery.amperage ?? battery.instantAmperage
+        let isNotCharging = battery.isCharging == false
+        let hasNoChargeCurrent = battery.chargingCurrent == 0 || battery.notChargingReason == 14
+        let isDischarging = batteryAmperage.map { $0 <= 0 } ?? false
+
+        return isNotCharging || hasNoChargeCurrent || isDischarging
+    }
+
+    private func currentMenuStatusLines() -> [String] {
         guard let lastResponse else {
-            return L10n.updated
+            return [L10n.updated]
         }
         if lastResponse.ok {
-            return statusText(for: lastResponse)
+            return menuStatusLines(for: lastResponse)
         }
-        return lastResponse.error ?? L10n.helperError
+        return [lastResponse.error ?? L10n.helperError]
     }
 
     private func rebuildMenu(status: String) {
+        rebuildMenu(statusLines: [status])
+    }
+
+    private func rebuildMenu(statusLines: [String]) {
         let menu = NSMenu()
 
-        let statusItem = NSMenuItem(title: status, action: nil, keyEquivalent: "")
-        statusItem.isEnabled = false
-        menu.addItem(statusItem)
+        for line in statusLines {
+            let statusItem = NSMenuItem(title: line, action: nil, keyEquivalent: "")
+            statusItem.isEnabled = false
+            menu.addItem(statusItem)
+        }
 
         if let compatibility = lastResponse?.compatibility {
             let model = compatibility.modelIdentifier ?? "Mac"
@@ -550,7 +616,7 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
                 return
             }
             isEnabled = false
-            rebuildMenu(status: currentMenuStatus())
+            rebuildMenu(statusLines: currentMenuStatusLines())
         }
         write(value, retryOnRateLimit: true)
     }
@@ -584,7 +650,7 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
             } else {
                 try SMAppService.mainApp.register()
             }
-            rebuildMenu(status: currentMenuStatus())
+            rebuildMenu(statusLines: currentMenuStatusLines())
         } catch {
             showAlert(title: L10n.alertTitle(.launchAtLoginFailed), message: String(describing: error))
         }
@@ -662,7 +728,7 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
 
         do {
             try SMAppService.mainApp.register()
-            rebuildMenu(status: currentMenuStatus())
+            rebuildMenu(statusLines: currentMenuStatusLines())
         } catch {
             showAlert(title: L10n.alertTitle(.launchAtLoginFailed), message: String(describing: error))
         }

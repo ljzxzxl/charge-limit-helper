@@ -123,18 +123,13 @@ public struct ChargeLimitPolicy {
                 }
                 return .write(config.pauseSMCValue, reason: "visible battery is above target \(config.targetPercent)%")
             }
+        }
 
-            if currentBCLM == config.chargeSMCValue {
-                return .hold(reason: "already allowing charge at or below target")
+        if percent >= config.targetPercent {
+            if currentBCLM == config.pauseSMCValue {
+                return .hold(reason: "already paused at or above target")
             }
-            return .write(config.chargeSMCValue, reason: "visible battery reached discharge target \(config.targetPercent)%")
-        } else {
-            if percent >= config.targetPercent {
-                if currentBCLM == config.pauseSMCValue {
-                    return .hold(reason: "already paused at or above target")
-                }
-                return .write(config.pauseSMCValue, reason: "battery reached target \(config.targetPercent)%")
-            }
+            return .write(config.pauseSMCValue, reason: "battery reached target \(config.targetPercent)%")
         }
 
         let resumePercent = max(0, config.targetPercent - config.hysteresisPercent)
