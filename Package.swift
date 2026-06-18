@@ -40,7 +40,8 @@ let package = Package(
             dependencies: ["ChargeLimitCore"],
             path: "Sources/charge-limit-menubar",
             linkerSettings: [
-                .linkedFramework("AppKit")
+                .linkedFramework("AppKit"),
+                .linkedFramework("ServiceManagement")
             ]
         )
     ]

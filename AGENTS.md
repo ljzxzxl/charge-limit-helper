@@ -75,7 +75,7 @@ Swift Package products:
     `restore-default`, `set-bclm`, `logs`.
 
 - `charge-limit-menubar`
-  - Development menu bar UI scaffold.
+  - `ChargeLimiter` menu bar app implementation.
   - Shows status and target controls.
   - Calls the current helper transport through `SocketChargeLimitService`.
 
@@ -166,7 +166,8 @@ After that, move toward a public app:
 - Only validated on `MacBookPro16,1`.
 - Current helper authorization is MVP-level Unix socket permission
   (`root:admin`, mode `0660`), not production XPC authorization.
-- No GUI yet.
+- `ChargeLimiter` menu bar UI exists, but it is still a development UI rather
+  than a signed/notarized production app.
 - No signed/notarized release.
 - No broad model compatibility matrix.
 - No automatic recovery service if SMC state is externally changed.
@@ -211,13 +212,13 @@ Run monitor:
 .build/release/charge-limit-monitor --target 82 --verbose
 ```
 
-Run development menu bar scaffold:
+Run development menu bar executable:
 
 ```sh
 .build/release/charge-limit-menubar
 ```
 
-Build and package the app:
+Build and package `ChargeLimiter.app`:
 
 ```sh
 ./scripts/build-app.sh
@@ -245,6 +246,6 @@ Uninstall development helper:
 - `Sources/ChargeLimitHelper/main.swift`: root helper daemon.
 - `Sources/charge-limit-monitor/main.swift`: user-space monitor.
 - `Sources/charge-limit/main.swift`: developer CLI.
-- `Sources/charge-limit-menubar/main.swift`: development menu bar scaffold.
+- `Sources/charge-limit-menubar/main.swift`: `ChargeLimiter` menu bar app.
 - `docs/validation.md`: hardware validation notes.
 - `docs/architecture.md`: architecture notes.

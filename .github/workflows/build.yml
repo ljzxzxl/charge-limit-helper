@@ -22,17 +22,17 @@ jobs:
 
       - name: Verify app bundle
         run: |
-          codesign --verify --deep --strict --verbose=2 "build/Charge Limit Helper.app"
-          hdiutil imageinfo dist/ChargeLimitHelper-*.dmg >/dev/null
-          (cd dist && shasum -a 256 -c ChargeLimitHelper-*.dmg.sha256)
+          codesign --verify --deep --strict --verbose=2 "build/ChargeLimiter.app"
+          hdiutil imageinfo dist/ChargeLimiter-*.dmg >/dev/null
+          (cd dist && shasum -a 256 -c ChargeLimiter-*.dmg.sha256)
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ChargeLimitHelper
+          name: ChargeLimiter
           path: |
-            dist/ChargeLimitHelper-*.dmg
-            dist/ChargeLimitHelper-*.dmg.sha256
+            dist/ChargeLimiter-*.dmg
+            dist/ChargeLimiter-*.dmg.sha256
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
@@ -41,12 +41,12 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           {
-            echo "Charge Limit Helper ${VERSION}"
+            echo "ChargeLimiter ${VERSION}"
             cat <<'EOF'
 
           A minimal Intel MacBook charge limiter that provides the core AlDente-like behavior: pause charging at the configured target and resume below the hysteresis threshold.
 
-          Download `ChargeLimitHelper-*.dmg`, open it, drag `Charge Limit Helper.app` to Applications, then run it from the menu bar. The app installs a privileged helper when you choose Install Helper.
+          Download `ChargeLimiter-*.dmg`, open it, drag `ChargeLimiter.app` to Applications, then run it from the menu bar. The app installs a privileged helper when you choose Install Helper.
 
           Current scope:
 
@@ -61,7 +61,7 @@ jobs:
 
           一个最小化的 Intel MacBook 充电限制工具，实现类似 AlDente 的核心行为：达到目标电量后暂停充电，低于回差阈值后恢复充电。
 
-          下载 `ChargeLimitHelper-*.dmg`，打开后把 `Charge Limit Helper.app` 拖到“应用程序”中，再从菜单栏运行。选择 Install Helper 时，应用会安装 privileged helper。
+          下载 `ChargeLimiter-*.dmg`，打开后把 `ChargeLimiter.app` 拖到“应用程序”中，再从菜单栏运行。选择 Install Helper 时，应用会安装 privileged helper。
 
           当前范围：
 
@@ -75,9 +75,9 @@ jobs:
           } > release-notes.md
 
           if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
-            gh release upload "${GITHUB_REF_NAME}" dist/ChargeLimitHelper-*.dmg dist/ChargeLimitHelper-*.dmg.sha256 --clobber
+            gh release upload "${GITHUB_REF_NAME}" dist/ChargeLimiter-*.dmg dist/ChargeLimiter-*.dmg.sha256 --clobber
           else
-            gh release create "${GITHUB_REF_NAME}" dist/ChargeLimitHelper-*.dmg dist/ChargeLimitHelper-*.dmg.sha256 \
-              --title "Charge Limit Helper ${VERSION}" \
+            gh release create "${GITHUB_REF_NAME}" dist/ChargeLimiter-*.dmg dist/ChargeLimiter-*.dmg.sha256 \
+              --title "ChargeLimiter ${VERSION}" \
               --notes-file release-notes.md
           fi

@@ -1,10 +1,12 @@
 import AppKit
 import ChargeLimitCore
 import Foundation
+import ServiceManagement
 
 private enum DefaultsKey {
     static let targetPercent = "targetPercent"
     static let enabled = "enabled"
+    static let didShowFirstRunGuidance = "didShowFirstRunGuidance"
 }
 
 @MainActor
@@ -38,9 +40,12 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
-        statusItem.button?.title = "CL"
+        configureStatusItem(title: "")
         rebuildMenu(status: "Loading...")
         refreshStatus()
+        Task { @MainActor in
+            showFirstRunGuidanceIfNeeded()
+        }
         timer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.refreshStatus()
@@ -56,14 +61,14 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
                 applyPolicyIfNeeded(response: response)
                 let percent = response.battery?.uiStateOfCharge.map { "\($0)%" } ?? "--"
                 let state = response.chargeState?.rawValue ?? "unknown"
-                statusItem.button?.title = "\(percent) \(symbol(for: response.chargeState))"
+                configureStatusItem(title: "\(percent) \(symbol(for: response.chargeState))")
                 rebuildMenu(status: "\(percent) · \(state) · BCLM \(response.bclm.map(String.init) ?? "?")")
             } else {
-                statusItem.button?.title = "CL !"
+                configureStatusItem(title: "!")
                 rebuildMenu(status: response.error ?? "Helper error")
             }
         } catch {
-            statusItem.button?.title = "CL !"
+            configureStatusItem(title: "!")
             rebuildMenu(status: "Helper unavailable")
         }
     }
@@ -107,6 +112,13 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
 
         menu.addItem(.separator())
 
+        let launchAtLogin = NSMenuItem(title: launchAtLoginTitle(), action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
+        launchAtLogin.state = launchAtLoginState()
+        launchAtLogin.target = self
+        menu.addItem(launchAtLogin)
+
+        menu.addItem(.separator())
+
         let pause = NSMenuItem(title: "Pause Charging", action: #selector(pauseCharging), keyEquivalent: "")
         pause.target = self
         menu.addItem(pause)
@@ -121,11 +133,11 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
 
         menu.addItem(.separator())
 
-        let install = NSMenuItem(title: "Install Helper (Dev)", action: #selector(installHelper), keyEquivalent: "")
+        let install = NSMenuItem(title: "Install Helper", action: #selector(installHelper), keyEquivalent: "")
         install.target = self
         menu.addItem(install)
 
-        let uninstall = NSMenuItem(title: "Uninstall Helper (Dev)", action: #selector(uninstallHelper), keyEquivalent: "")
+        let uninstall = NSMenuItem(title: "Uninstall Helper", action: #selector(uninstallHelper), keyEquivalent: "")
         uninstall.target = self
         menu.addItem(uninstall)
 
@@ -140,6 +152,39 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
         menu.addItem(quit)
 
         self.statusItem.menu = menu
+    }
+
+    private func configureStatusItem(title: String) {
+        guard let button = statusItem.button else {
+            return
+        }
+
+        button.image = menuBarImage()
+        button.imagePosition = title.isEmpty ? .imageOnly : .imageLeft
+        button.title = title
+    }
+
+    private func menuBarImage() -> NSImage? {
+        let resourceName = usesDarkAppearance ? "MenuBarIconDark" : "MenuBarIconLight"
+        let image = loadImage(named: resourceName)
+        image?.size = NSSize(width: 18, height: 18)
+        image?.isTemplate = false
+        return image
+    }
+
+    private var usesDarkAppearance: Bool {
+        let appearance = statusItem.button?.effectiveAppearance ?? NSApp.effectiveAppearance
+        return appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+    }
+
+    private func loadImage(named name: String) -> NSImage? {
+        if let bundled = Bundle.main.url(forResource: name, withExtension: "png"),
+           let image = NSImage(contentsOf: bundled) {
+            return image
+        }
+
+        let repoPath = "\(FileManager.default.currentDirectoryPath)/Resources/\(name).png"
+        return NSImage(contentsOfFile: repoPath)
     }
 
     private func symbol(for state: ChargeState?) -> String {
@@ -190,7 +235,7 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
         alert.runModal()
     }
 
-    private func runScript(named scriptName: String, arguments: [String] = []) {
+    private func runScript(named scriptName: String, arguments: [String] = [], completion: ((Bool) -> Void)? = nil) {
         let bundledScript = Bundle.main.resourceURL?
             .appendingPathComponent("Scripts")
             .appendingPathComponent(scriptName)
@@ -205,11 +250,13 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
                 title: "Script Not Found",
                 message: "Could not find \(scriptName) in the app bundle or repository scripts directory."
             )
+            completion?(false)
             return
         }
 
         guard FileManager.default.isExecutableFile(atPath: script) else {
             showAlert(title: "Script Not Found", message: "Could not find executable script at \(script). Run from the repository root for the development installer.")
+            completion?(false)
             return
         }
 
@@ -218,8 +265,10 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
         var error: NSDictionary?
         if NSAppleScript(source: source)?.executeAndReturnError(&error) == nil {
             showAlert(title: "Command Failed", message: error?.description ?? "Unknown AppleScript error")
+            completion?(false)
         } else {
             refreshStatus()
+            completion?(true)
         }
     }
 
@@ -278,11 +327,29 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
     }
 
     @objc private func installHelper() {
-        runScript(named: "install-helper.sh")
+        runScript(named: "install-helper.sh") { [weak self] success in
+            guard success else {
+                return
+            }
+            self?.promptLaunchAtLoginIfNeeded()
+        }
     }
 
     @objc private func uninstallHelper() {
         runScript(named: "uninstall-helper.sh")
+    }
+
+    @objc private func toggleLaunchAtLogin() {
+        do {
+            if SMAppService.mainApp.status == .enabled {
+                try SMAppService.mainApp.unregister()
+            } else {
+                try SMAppService.mainApp.register()
+            }
+            rebuildMenu(status: lastResponse?.chargeState?.rawValue ?? "Updated")
+        } catch {
+            showAlert(title: "Launch at Login Failed", message: String(describing: error))
+        }
     }
 
     @objc private func showLogs() {
@@ -291,6 +358,91 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
 
     @objc private func quit() {
         NSApp.terminate(nil)
+    }
+
+    private func launchAtLoginTitle() -> String {
+        switch SMAppService.mainApp.status {
+        case .requiresApproval:
+            return "Launch at Login (Needs Approval)"
+        case .notFound:
+            return "Launch at Login (Move to Applications)"
+        default:
+            return "Launch at Login"
+        }
+    }
+
+    private func launchAtLoginState() -> NSControl.StateValue {
+        switch SMAppService.mainApp.status {
+        case .enabled:
+            return .on
+        case .requiresApproval:
+            return .mixed
+        default:
+            return .off
+        }
+    }
+
+    private func showFirstRunGuidanceIfNeeded() {
+        guard !UserDefaults.standard.bool(forKey: DefaultsKey.didShowFirstRunGuidance) else {
+            return
+        }
+
+        UserDefaults.standard.set(true, forKey: DefaultsKey.didShowFirstRunGuidance)
+
+        if helperIsAvailable() {
+            promptLaunchAtLoginIfNeeded()
+            return
+        }
+
+        let response = firstRunAlert(
+            title: "Install Helper Required",
+            message: "ChargeLimiter needs to install a privileged helper before it can read battery state and pause charging. After installing it, you can enable Launch at Login from the menu so the limit stays active after restart.",
+            firstButton: "Install Helper",
+            secondButton: "Not Now"
+        )
+
+        if response == .alertFirstButtonReturn {
+            installHelper()
+        }
+    }
+
+    private func promptLaunchAtLoginIfNeeded() {
+        guard SMAppService.mainApp.status != .enabled else {
+            return
+        }
+
+        let response = firstRunAlert(
+            title: "Enable Launch at Login?",
+            message: "ChargeLimiter works best when it opens automatically after you sign in, because the menu bar app keeps applying your charge limit policy.",
+            firstButton: "Enable",
+            secondButton: "Not Now"
+        )
+
+        guard response == .alertFirstButtonReturn else {
+            return
+        }
+
+        do {
+            try SMAppService.mainApp.register()
+            rebuildMenu(status: lastResponse?.chargeState?.rawValue ?? "Updated")
+        } catch {
+            showAlert(title: "Launch at Login Failed", message: String(describing: error))
+        }
+    }
+
+    private func helperIsAvailable() -> Bool {
+        (try? service.status()).map { $0.ok } ?? false
+    }
+
+    private func firstRunAlert(title: String, message: String, firstButton: String, secondButton: String) -> NSApplication.ModalResponse {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: firstButton)
+        alert.addButton(withTitle: secondButton)
+        return alert.runModal()
     }
 }
 

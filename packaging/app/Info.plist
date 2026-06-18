@@ -7,10 +7,10 @@
   <string>zh_CN</string>
 
   <key>CFBundleDisplayName</key>
-  <string>Charge Limit Helper</string>
+  <string>ChargeLimiter</string>
 
   <key>CFBundleExecutable</key>
-  <string>ChargeLimitHelper</string>
+  <string>ChargeLimiter</string>
 
   <key>CFBundleIconFile</key>
   <string>ChargeLimitHelper</string>
@@ -19,13 +19,13 @@
   <string>ChargeLimitHelper</string>
 
   <key>CFBundleIdentifier</key>
-  <string>com.lookslikecode.ChargeLimitHelperApp</string>
+  <string>com.lookslikecode.ChargeLimiter</string>
 
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
 
   <key>CFBundleName</key>
-  <string>Charge Limit Helper</string>
+  <string>ChargeLimiter</string>
 
   <key>CFBundlePackageType</key>
   <string>APPL</string>

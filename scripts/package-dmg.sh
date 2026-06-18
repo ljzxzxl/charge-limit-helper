@@ -3,11 +3,11 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 VERSION="$("${ROOT_DIR}/scripts/read-version.sh")"
-APP_NAME="Charge Limit Helper"
+APP_NAME="ChargeLimiter"
 DIST_DIR="${ROOT_DIR}/dist"
 STAGING_DIR="${ROOT_DIR}/build/dmg-staging"
 APP_PATH="${ROOT_DIR}/build/${APP_NAME}.app"
-DMG_NAME="ChargeLimitHelper-${VERSION}.dmg"
+DMG_NAME="ChargeLimiter-${VERSION}.dmg"
 DMG_PATH="${DIST_DIR}/${DMG_NAME}"
 
 "${ROOT_DIR}/scripts/build-app.sh"
@@ -19,7 +19,7 @@ COPYFILE_DISABLE=1 /usr/bin/ditto --norsrc "${APP_PATH}" "${STAGING_DIR}/${APP_N
 /bin/ln -s /Applications "${STAGING_DIR}/Applications"
 
 COPYFILE_DISABLE=1 /usr/bin/hdiutil create \
-  -volname "Charge Limit Helper" \
+  -volname "ChargeLimiter" \
   -srcfolder "${STAGING_DIR}" \
   -ov \
   -format UDZO \

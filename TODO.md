@@ -107,11 +107,11 @@ Goal: build the user-facing app.
 - [x] Add target percentage control.
 - [x] Add enable/disable charge limiting toggle.
 - [x] Add helper install/update/remove flow.
-- [ ] Add launch-at-login toggle.
+- [x] Add launch-at-login toggle.
 - [x] Add settings persistence.
 - [x] Add safe restore button: write `BCLM=100`.
 - [x] Add logs / diagnostics export.
-- [ ] Add first-run warning explaining low-level battery control.
+- [x] Add first-run warning explaining low-level battery control.
 - [ ] Add unsupported hardware UI.
 
 Acceptance criteria:
@@ -132,10 +132,10 @@ Goal: produce a downloadable release suitable for other users.
 - [ ] Add hardened runtime settings.
 - [ ] Notarize the app.
 - [ ] Staple notarization ticket.
-- [ ] Build DMG or PKG installer.
+- [x] Build development DMG installer.
 - [x] Add development DMG packaging script.
 - [x] Add release artifact checksums.
-- [ ] Document installation and uninstall.
+- [x] Document installation and uninstall.
 
 Acceptance criteria:
 
@@ -147,11 +147,11 @@ Acceptance criteria:
 
 Goal: make releases reproducible.
 
-- [ ] Add GitHub Actions build workflow.
+- [x] Add GitHub Actions build workflow.
 - [ ] Add lint or formatting check.
 - [ ] Add unit tests for policy logic.
 - [ ] Add non-hardware tests for protocol and config.
-- [ ] Add release workflow draft.
+- [x] Add release workflow draft.
 - [ ] Add changelog.
 - [ ] Add issue templates:
   - [ ] Bug report
