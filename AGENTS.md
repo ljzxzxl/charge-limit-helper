@@ -11,6 +11,8 @@ AlDente-like behavior:
 - Let the Mac charge until a user-selected target percentage.
 - Pause charging at the target.
 - Resume charging after the battery drops below a hysteresis threshold.
+- When the battery starts above the selected target, let it naturally discharge
+  down to the target while plugged in, then resume normal charge limiting.
 - Eventually ship as a downloadable, signed, notarized Mac menu bar app.
 
 The current repository is a development MVP, not a production-ready app.
@@ -29,6 +31,9 @@ Key observed behavior with AlDente exited:
 
 - Writing `BCLM=100` as root allows charging.
 - Writing `BCLM=15` as root pauses charging.
+- With AC still attached and `BCLM=15`, the machine can naturally discharge.
+  In validation, raw state of charge fell while `ExternalConnected=Yes`,
+  `ChargingCurrent=0`, and `NotChargingReason=14`.
 - At 82% UI battery percentage, writing `BCLM=15` produced a stable state:
 
 ```text
@@ -45,6 +50,21 @@ Important interpretation:
 - In this validated flow it behaves as a low SMC limit that forces charging to
   pause after the desired target is reached.
 - The MVP policy is therefore: write `100` to allow charge, write `15` to pause.
+- macOS UI battery percentage can lag behind the raw battery gauge near 100%.
+  For discharge-to-target behavior, prefer `rawStateOfCharge` when deciding
+  whether the target has been reached.
+
+Active discharge validation:
+
+- The project tested common adapter-disconnect SMC keys seen in public battery
+  tools: `CH0B`, `CH0C`, `CHTE`, `CHIE`, `CH0I`, and `CH0J`.
+- On `MacBookPro16,1`, `CH0B`, `CH0C`, `CHTE`, `CHIE`, and `CH0I` were not
+  present. `CH0J` appeared special but returned `not privileged` for read/write
+  even when executed with administrator privileges.
+- Do not pursue the simulated-charger-disconnect approach for this model unless
+  there is a new, well-contained validation plan.
+- The current preferred approach is to keep `BCLM=15` while raw SoC is above
+  the target, then restore `BCLM=100` once raw SoC reaches the target.
 
 ## Current Architecture
 
@@ -61,6 +81,8 @@ Swift Package products:
   - Can run directly or via launchd.
   - Listens on `/var/run/charge-limit-helper.sock`.
   - Supports `status` and `setBCLM`.
+  - Also has development-only raw SMC helpers for validation:
+    `smc-read <key>` and a whitelist-limited `smc-write-hex <key> <hex>`.
   - Keeps the privileged API deliberately small.
 
 - `charge-limit-monitor`
@@ -78,6 +100,14 @@ Swift Package products:
   - `ChargeLimiter` menu bar app implementation.
   - Shows status and target controls.
   - Calls the current helper transport through `SocketChargeLimitService`.
+  - Uses the discharge-to-target policy path: if charge limiting is enabled and
+    raw SoC is above the target, it holds `BCLM=15`; once raw SoC reaches the
+    target, it writes `BCLM=100`.
+  - Menu bar icon uses both 1x and 2x PNG representations so it stays sharp on
+    Retina displays.
+  - Manual Pause Charging / Resume Charging disables automatic charge limiting
+    after confirmation; if automatic limiting is already disabled, no warning is
+    shown.
 
 Supporting files:
 
@@ -107,6 +137,7 @@ swift build -c release
 .build/release/charge-limit self-test
 .build/release/charge-limit doctor
 .build/release/charge-limit-helperd status
+.build/release/charge-limit-helperd smc-read BCLM
 ./scripts/build-app.sh
 ./scripts/package-dmg.sh
 plutil -lint packaging/launchd/*.plist
@@ -150,26 +181,37 @@ ls -l /var/run/charge-limit-helper.sock 2>/dev/null || true
 .build/release/charge-limit doctor
 ```
 
+After discharge-to-target experiments, additionally check:
+
+```sh
+/usr/local/bin/charge-limit status
+.build/release/charge-limit-helperd smc-read BCLM
+pmset -g batt
+```
+
+Safe final state should normally be `BCLM=100` when not actively validating, or
+`BCLM=15` only when intentionally testing pause/discharge behavior.
+
 ## Near-Term Development Plan
 
-Recommended next milestone: development install loop.
+Recommended next milestone: turn the current validation app into a safer
+downloadable development release.
 
-1. Verify `scripts/install-helper.sh` installs the helper LaunchDaemon.
-2. Verify `.build/release/charge-limit status` talks to the daemon socket.
-3. Verify `charge-limit-monitor --target 82 --verbose` can pause/resume without
-   AlDente running.
-4. Improve logging and failure handling.
-5. Add uninstall behavior that restores `BCLM=100`.
+1. Finish validating discharge-to-target with target 90% on `MacBookPro16,1`.
+2. Decide whether the raw SMC validation commands should remain in the helper,
+   be hidden behind a development flag, or be removed before the next release.
+3. Add clearer UI/status copy for active discharge-to-target mode.
+4. Add fallback recovery documentation.
+5. Broaden validation to at least one more Intel MacBook model.
 
 After that, move toward a public app:
 
-1. Build a SwiftUI menu bar app.
-2. Replace the MVP Unix socket with XPC.
-3. Validate client code signature in the helper.
-4. Install the helper via `SMAppService` or an `SMJobBless`-style flow.
-5. Add Apple Developer ID signing, notarization, and DMG/PKG packaging.
-6. Add compatibility checks and user-facing warnings.
-7. Add CI and standard tests.
+1. Replace the MVP Unix socket with XPC.
+2. Validate client code signature in the helper.
+3. Install the helper via `SMAppService` or an `SMJobBless`-style flow.
+4. Add Apple Developer ID signing, notarization, and DMG/PKG packaging.
+5. Add compatibility checks and user-facing warnings.
+6. Add CI and standard tests.
 
 ## Known Limitations
 
@@ -182,6 +224,11 @@ After that, move toward a public app:
 - No signed/notarized release.
 - No broad model compatibility matrix.
 - No automatic recovery service if SMC state is externally changed.
+- Discharge-to-target has only been validated on one machine so far. It depends
+  on raw SoC behavior and should be treated as experimental until more machines
+  are tested.
+- Development raw SMC commands are intentionally whitelist-limited but are still
+  privileged hardware controls. They should not be exposed in the production UI.
 
 ## Useful Commands
 
@@ -201,6 +248,7 @@ Read local battery and SMC state:
 
 ```sh
 .build/release/charge-limit doctor
+.build/release/charge-limit-helperd smc-read BCLM
 ```
 
 Run helper directly for development:
@@ -229,6 +277,13 @@ Run development menu bar executable:
 .build/release/charge-limit-menubar
 ```
 
+Run the packaged local app used for validation:
+
+```sh
+./scripts/build-app.sh
+open build/ChargeLimiter.app
+```
+
 Build and package `ChargeLimiter.app`:
 
 ```sh
@@ -252,7 +307,8 @@ Uninstall development helper:
 
 - `Sources/ChargeLimitCore/SMC.swift`: AppleSMC read/write implementation.
 - `Sources/ChargeLimitCore/Battery.swift`: `AppleSmartBattery` snapshot.
-- `Sources/ChargeLimitCore/ChargeLimitPolicy.swift`: pause/resume decision logic.
+- `Sources/ChargeLimitCore/ChargeLimitPolicy.swift`: pause/resume and
+  discharge-to-target decision logic.
 - `Sources/ChargeLimitCore/UnixSocket.swift`: MVP helper transport.
 - `Sources/ChargeLimitHelper/main.swift`: root helper daemon.
 - `Sources/charge-limit-monitor/main.swift`: user-space monitor.
