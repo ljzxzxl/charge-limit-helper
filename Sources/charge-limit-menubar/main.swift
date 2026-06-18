@@ -372,8 +372,10 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
             return
         }
 
-        let command = ([script] + arguments).map(shellQuoted).joined(separator: " ")
-        let source = "do shell script \(String(reflecting: command)) with administrator privileges"
+        let commandExpression = ([script] + arguments)
+            .map { "(quoted form of \(appleScriptStringLiteral($0)))" }
+            .joined(separator: " & \" \" & ")
+        let source = "do shell script \(commandExpression) with administrator privileges"
         var error: NSDictionary?
         if NSAppleScript(source: source)?.executeAndReturnError(&error) == nil {
             showAlert(title: L10n.alertTitle(.commandFailed), message: error?.description ?? L10n.unknownError)
@@ -384,8 +386,11 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func shellQuoted(_ value: String) -> String {
-        "'\(value.replacingOccurrences(of: "'", with: "'\\''"))'"
+    private func appleScriptStringLiteral(_ value: String) -> String {
+        let escaped = value
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+        return "\"\(escaped)\""
     }
 
     @objc private func toggleEnabled() {
