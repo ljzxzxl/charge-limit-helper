@@ -96,6 +96,8 @@ swift build -c release
 .build/release/charge-limit self-test
 .build/release/charge-limit doctor
 .build/release/charge-limit-helperd status
+./scripts/build-app.sh
+./scripts/package-dmg.sh
 plutil -lint packaging/launchd/*.plist
 ```
 
@@ -213,6 +215,13 @@ Run development menu bar scaffold:
 
 ```sh
 .build/release/charge-limit-menubar
+```
+
+Build and package the app:
+
+```sh
+./scripts/build-app.sh
+./scripts/package-dmg.sh
 ```
 
 Install development helper:

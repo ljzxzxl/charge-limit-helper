@@ -1,0 +1,83 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-13
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build Swift products
+        run: swift build -c release
+
+      - name: Package app DMG
+        run: ./scripts/package-dmg.sh
+
+      - name: Verify app bundle
+        run: |
+          codesign --verify --deep --strict --verbose=2 "build/Charge Limit Helper.app"
+          hdiutil imageinfo dist/ChargeLimitHelper-*.dmg >/dev/null
+          (cd dist && shasum -a 256 -c ChargeLimitHelper-*.dmg.sha256)
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChargeLimitHelper
+          path: |
+            dist/ChargeLimitHelper-*.dmg
+            dist/ChargeLimitHelper-*.dmg.sha256
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          {
+            echo "Charge Limit Helper ${VERSION}"
+            cat <<'EOF'
+
+          A minimal Intel MacBook charge limiter that provides the core AlDente-like behavior: pause charging at the configured target and resume below the hysteresis threshold.
+
+          Download `ChargeLimitHelper-*.dmg`, open it, drag `Charge Limit Helper.app` to Applications, then run it from the menu bar. The app installs a privileged helper when you choose Install Helper.
+
+          Current scope:
+
+          - Intel MacBooks only.
+          - Uses AppleSMC `BCLM` control through a privileged helper.
+          - Ad-hoc signed development build, not notarized yet.
+          - Use at your own risk while the project is still young.
+
+          The `.sha256` file is included for checksum verification.
+
+          ---
+
+          一个最小化的 Intel MacBook 充电限制工具，实现类似 AlDente 的核心行为：达到目标电量后暂停充电，低于回差阈值后恢复充电。
+
+          下载 `ChargeLimitHelper-*.dmg`，打开后把 `Charge Limit Helper.app` 拖到“应用程序”中，再从菜单栏运行。选择 Install Helper 时，应用会安装 privileged helper。
+
+          当前范围：
+
+          - 仅支持 Intel MacBook。
+          - 通过 privileged helper 写入 AppleSMC `BCLM`。
+          - 当前是 ad-hoc 签名的开发构建，尚未 notarize。
+          - 项目仍在早期阶段，请自行承担使用风险。
+
+          `.sha256` 文件可用于校验下载包。
+          EOF
+          } > release-notes.md
+
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" dist/ChargeLimitHelper-*.dmg dist/ChargeLimitHelper-*.dmg.sha256 --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" dist/ChargeLimitHelper-*.dmg dist/ChargeLimitHelper-*.dmg.sha256 \
+              --title "Charge Limit Helper ${VERSION}" \
+              --notes-file release-notes.md
+          fi

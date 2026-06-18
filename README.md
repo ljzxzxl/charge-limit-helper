@@ -26,8 +26,9 @@ Known current limitations:
 
 - Intel MacBooks only.
 - The helper daemon uses a local Unix socket for the MVP.
-- The future packaged app should use Apple's ServiceManagement flow and code
-  signing before broad distribution.
+- The current DMG is a development package with ad-hoc signing. Broad
+  distribution still needs Developer ID signing, notarization, and a proper
+  ServiceManagement helper installation flow.
 - This is low-level battery firmware control. Use at your own risk.
 
 ## Build
@@ -36,6 +37,20 @@ Known current limitations:
 swift build -c release
 .build/release/charge-limit self-test
 ```
+
+Build the menu bar app bundle:
+
+```sh
+./scripts/build-app.sh
+```
+
+Create a DMG:
+
+```sh
+./scripts/package-dmg.sh
+```
+
+Tagged pushes create GitHub Release assets through `.github/workflows/build.yml`.
 
 ## Local Commands
 
@@ -72,6 +87,12 @@ Run the development menu bar scaffold:
 
 ```sh
 .build/release/charge-limit-menubar
+```
+
+Run the packaged app after `build-app.sh`:
+
+```sh
+open "build/Charge Limit Helper.app"
 ```
 
 ## Install Helper for Development

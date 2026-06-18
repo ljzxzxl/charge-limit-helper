@@ -133,7 +133,8 @@ Goal: produce a downloadable release suitable for other users.
 - [ ] Notarize the app.
 - [ ] Staple notarization ticket.
 - [ ] Build DMG or PKG installer.
-- [ ] Add release artifact checksums.
+- [x] Add development DMG packaging script.
+- [x] Add release artifact checksums.
 - [ ] Document installation and uninstall.
 
 Acceptance criteria:
@@ -186,7 +187,7 @@ Acceptance criteria:
 
 Goal: make the app understandable and trustworthy.
 
-- [ ] Add app icon.
+- [x] Add app icon.
 - [ ] Add concise status copy.
 - [ ] Add help/about window.
 - [ ] Add privacy statement.

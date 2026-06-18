@@ -4,6 +4,11 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 MONITOR_LABEL="com.lookslikecode.ChargeLimitMonitor"
 TARGET=80
+if [[ "${EUID}" -eq 0 ]]; then
+  SUDO=()
+else
+  SUDO=(sudo)
+fi
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -26,8 +31,10 @@ done
 cd "$ROOT_DIR"
 swift build -c release
 
-sudo mkdir -p /usr/local/bin
-sudo install -o root -g wheel -m 755 ".build/release/charge-limit-monitor" /usr/local/bin/charge-limit-monitor
+if [[ ! -x /usr/local/bin/charge-limit-monitor ]]; then
+  ${SUDO[@]} mkdir -p /usr/local/bin
+  ${SUDO[@]} install -o root -g wheel -m 755 ".build/release/charge-limit-monitor" /usr/local/bin/charge-limit-monitor
+fi
 
 mkdir -p "$HOME/Library/LaunchAgents"
 MONITOR_PLIST="$HOME/Library/LaunchAgents/${MONITOR_LABEL}.plist"

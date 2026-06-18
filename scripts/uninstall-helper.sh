@@ -10,6 +10,11 @@ CLI_DEST="/usr/local/bin/charge-limit"
 MONITOR_DEST="/usr/local/bin/charge-limit-monitor"
 MONITOR_PLIST="$HOME/Library/LaunchAgents/${MONITOR_LABEL}.plist"
 RESTORE=1
+if [[ "${EUID}" -eq 0 ]]; then
+  SUDO=()
+else
+  SUDO=(sudo)
+fi
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -34,14 +39,14 @@ if [[ -f "$MONITOR_PLIST" ]]; then
 fi
 
 if [[ "$RESTORE" == "1" ]]; then
-  "$CLI_DEST" restore-default 2>/dev/null || sudo "$HELPER_DEST" restore-default 2>/dev/null || true
+  "$CLI_DEST" restore-default 2>/dev/null || ${SUDO[@]} "$HELPER_DEST" restore-default 2>/dev/null || true
 fi
 
-sudo launchctl bootout system "$PLIST_DEST" 2>/dev/null || true
-sudo rm -f "$PLIST_DEST"
-sudo rm -f "$HELPER_DEST"
-sudo rm -f "$SOCKET_PATH"
-sudo rm -f "$CLI_DEST"
-sudo rm -f "$MONITOR_DEST"
+${SUDO[@]} launchctl bootout system "$PLIST_DEST" 2>/dev/null || true
+${SUDO[@]} rm -f "$PLIST_DEST"
+${SUDO[@]} rm -f "$HELPER_DEST"
+${SUDO[@]} rm -f "$SOCKET_PATH"
+${SUDO[@]} rm -f "$CLI_DEST"
+${SUDO[@]} rm -f "$MONITOR_DEST"
 
 echo "Removed ${HELPER_LABEL}"

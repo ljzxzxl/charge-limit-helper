@@ -1,10 +1,15 @@
 .DS_Store
 .build/
 .swiftpm/
+build/
+dist/
 DerivedData/
 *.xcuserdata/
 *.xcodeproj/project.xcworkspace/xcuserdata/
 *.xcodeproj/xcuserdata/
+*.app/
+*.dmg
+*.zip
 
 *.log
 *.swp

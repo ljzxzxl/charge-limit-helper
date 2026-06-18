@@ -10,6 +10,11 @@ CLI_DEST="/usr/local/bin/charge-limit"
 MONITOR_DEST="/usr/local/bin/charge-limit-monitor"
 INSTALL_MONITOR=0
 TARGET=80
+if [[ "${EUID}" -eq 0 ]]; then
+  SUDO=()
+else
+  SUDO=(sudo)
+fi
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -35,20 +40,25 @@ done
 cd "$ROOT_DIR"
 swift build -c release
 
-sudo mkdir -p /Library/PrivilegedHelperTools
-sudo mkdir -p /Library/Logs/ChargeLimitHelper
-sudo mkdir -p /usr/local/bin
-sudo install -o root -g wheel -m 755 ".build/release/charge-limit-helperd" "$HELPER_DEST"
-sudo install -o root -g wheel -m 755 ".build/release/charge-limit" "$CLI_DEST"
-sudo install -o root -g wheel -m 755 ".build/release/charge-limit-monitor" "$MONITOR_DEST"
-sudo install -o root -g wheel -m 644 "packaging/launchd/${HELPER_LABEL}.plist" "$PLIST_DEST"
+${SUDO[@]} mkdir -p /Library/PrivilegedHelperTools
+${SUDO[@]} mkdir -p /Library/Logs/ChargeLimitHelper
+${SUDO[@]} mkdir -p /usr/local/bin
+${SUDO[@]} install -o root -g wheel -m 755 ".build/release/charge-limit-helperd" "$HELPER_DEST"
+${SUDO[@]} install -o root -g wheel -m 755 ".build/release/charge-limit" "$CLI_DEST"
+${SUDO[@]} install -o root -g wheel -m 755 ".build/release/charge-limit-monitor" "$MONITOR_DEST"
+${SUDO[@]} install -o root -g wheel -m 644 "packaging/launchd/${HELPER_LABEL}.plist" "$PLIST_DEST"
 
-sudo launchctl bootout system "$PLIST_DEST" 2>/dev/null || true
-sudo launchctl bootstrap system "$PLIST_DEST"
-sudo launchctl kickstart -k "system/${HELPER_LABEL}"
+${SUDO[@]} launchctl bootout system "$PLIST_DEST" 2>/dev/null || true
+${SUDO[@]} launchctl bootstrap system "$PLIST_DEST"
+${SUDO[@]} launchctl kickstart -k "system/${HELPER_LABEL}"
 
 if [[ "$INSTALL_MONITOR" == "1" ]]; then
-  "$ROOT_DIR/scripts/install-monitor.sh" --target "$TARGET"
+  if [[ "${EUID}" -eq 0 ]]; then
+    echo "Skipping monitor LaunchAgent install because this script is running as root."
+    echo "Run scripts/install-monitor.sh --target ${TARGET} as the logged-in user."
+  else
+    "$ROOT_DIR/scripts/install-monitor.sh" --target "$TARGET"
+  fi
 fi
 
 echo "Installed ${HELPER_LABEL}"

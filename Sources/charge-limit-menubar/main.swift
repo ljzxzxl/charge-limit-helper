@@ -53,6 +53,7 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
             let response = try service.status()
             lastResponse = response
             if response.ok {
+                applyPolicyIfNeeded(response: response)
                 let percent = response.battery?.uiStateOfCharge.map { "\($0)%" } ?? "--"
                 let state = response.chargeState?.rawValue ?? "unknown"
                 statusItem.button?.title = "\(percent) \(symbol(for: response.chargeState))"
@@ -165,6 +166,22 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
         }
     }
 
+    private func applyPolicyIfNeeded(response: HelperResponse) {
+        guard isEnabled, let battery = response.battery else {
+            return
+        }
+
+        do {
+            let policy = try ChargeLimitPolicy(config: ChargeLimitConfig(targetPercent: targetPercent))
+            let decision = try policy.decide(snapshot: battery, currentBCLM: response.bclm)
+            if let value = decision.desiredSMCValue {
+                _ = try service.setBCLM(value, allowUnsupported: false)
+            }
+        } catch {
+            // The menu remains usable; the next refresh or manual action can surface errors.
+        }
+    }
+
     private func showAlert(title: String, message: String) {
         let alert = NSAlert()
         alert.messageText = title
@@ -173,16 +190,30 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
         alert.runModal()
     }
 
-    private func runScript(_ relativePath: String, arguments: [String] = []) {
-        let cwd = FileManager.default.currentDirectoryPath
-        let script = "\(cwd)/\(relativePath)"
+    private func runScript(named scriptName: String, arguments: [String] = []) {
+        let bundledScript = Bundle.main.resourceURL?
+            .appendingPathComponent("Scripts")
+            .appendingPathComponent(scriptName)
+            .path
+        let repoScript = "\(FileManager.default.currentDirectoryPath)/scripts/\(scriptName)"
+        let script = [bundledScript, repoScript]
+            .compactMap { $0 }
+            .first { FileManager.default.isExecutableFile(atPath: $0) }
+
+        guard let script else {
+            showAlert(
+                title: "Script Not Found",
+                message: "Could not find \(scriptName) in the app bundle or repository scripts directory."
+            )
+            return
+        }
+
         guard FileManager.default.isExecutableFile(atPath: script) else {
             showAlert(title: "Script Not Found", message: "Could not find executable script at \(script). Run from the repository root for the development installer.")
             return
         }
 
-        let quotedArguments = arguments.map { "'\($0.replacingOccurrences(of: "'", with: "'\\''"))'" }.joined(separator: " ")
-        let command = "\(script) \(quotedArguments)"
+        let command = ([script] + arguments).map(shellQuoted).joined(separator: " ")
         let source = "do shell script \(String(reflecting: command)) with administrator privileges"
         var error: NSDictionary?
         if NSAppleScript(source: source)?.executeAndReturnError(&error) == nil {
@@ -190,6 +221,10 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
         } else {
             refreshStatus()
         }
+    }
+
+    private func shellQuoted(_ value: String) -> String {
+        "'\(value.replacingOccurrences(of: "'", with: "'\\''"))'"
     }
 
     @objc private func toggleEnabled() {
@@ -243,11 +278,11 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
     }
 
     @objc private func installHelper() {
-        runScript("scripts/install-helper.sh")
+        runScript(named: "install-helper.sh")
     }
 
     @objc private func uninstallHelper() {
-        runScript("scripts/uninstall-helper.sh")
+        runScript(named: "uninstall-helper.sh")
     }
 
     @objc private func showLogs() {
