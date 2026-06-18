@@ -120,37 +120,51 @@ private enum L10n {
 
 private enum MenuBarIcon {
     static func make() -> NSImage {
-        let size = NSSize(width: 18, height: 18)
-        let image = NSImage(size: size, flipped: false) { _ in
-            NSColor.black.setFill()
+        let size: CGFloat = 18
+        let image = NSImage(size: NSSize(width: size, height: size))
 
-            let bolt = NSBezierPath()
-            bolt.move(to: NSPoint(x: 7.7, y: 16.4))
-            bolt.line(to: NSPoint(x: 10.8, y: 16.4))
-            bolt.line(to: NSPoint(x: 8.5, y: 10.2))
-            bolt.line(to: NSPoint(x: 10.9, y: 10.2))
-            bolt.line(to: NSPoint(x: 5.0, y: 1.4))
-            bolt.line(to: NSPoint(x: 6.4, y: 8.3))
-            bolt.line(to: NSPoint(x: 3.2, y: 8.3))
-            bolt.close()
-            bolt.fill()
+        image.lockFocus()
 
-            let firstPause = NSBezierPath(
-                roundedRect: NSRect(x: 12.3, y: 3.4, width: 2.1, height: 11.2),
-                xRadius: 1.05,
-                yRadius: 1.05
-            )
-            firstPause.fill()
-
-            let secondPause = NSBezierPath(
-                roundedRect: NSRect(x: 15.4, y: 3.4, width: 2.1, height: 11.2),
-                xRadius: 1.05,
-                yRadius: 1.05
-            )
-            secondPause.fill()
-
-            return true
+        guard let ctx = NSGraphicsContext.current?.cgContext else {
+            image.unlockFocus()
+            return image
         }
+
+        ctx.saveGState()
+        ctx.scaleBy(x: size / 100.0, y: size / 100.0)
+        ctx.translateBy(x: 0, y: 100)
+        ctx.scaleBy(x: 1, y: -1)
+        ctx.setFillColor(NSColor.black.cgColor)
+
+        let bolt = CGMutablePath()
+        bolt.move(to: CGPoint(x: 42, y: 20))
+        bolt.addLine(to: CGPoint(x: 27, y: 48))
+        bolt.addQuadCurve(to: CGPoint(x: 29, y: 51), control: CGPoint(x: 26, y: 50))
+        bolt.addLine(to: CGPoint(x: 42, y: 51))
+        bolt.addLine(to: CGPoint(x: 33, y: 78))
+        bolt.addQuadCurve(to: CGPoint(x: 36, y: 80), control: CGPoint(x: 33, y: 81))
+        bolt.addLine(to: CGPoint(x: 58, y: 45))
+        bolt.addQuadCurve(to: CGPoint(x: 55, y: 42), control: CGPoint(x: 59, y: 42))
+        bolt.addLine(to: CGPoint(x: 45, y: 42))
+        bolt.addLine(to: CGPoint(x: 52, y: 22))
+        bolt.addQuadCurve(to: CGPoint(x: 42, y: 20), control: CGPoint(x: 54, y: 18))
+        bolt.closeSubpath()
+        ctx.addPath(bolt)
+        ctx.fillPath()
+
+        let barWidth: CGFloat = 8
+        let barHeight: CGFloat = 36
+        let barTop: CGFloat = 32
+        let cornerRadius: CGFloat = 4
+
+        for x in [CGFloat(62), CGFloat(76)] {
+            let bar = CGRect(x: x, y: barTop, width: barWidth, height: barHeight)
+            ctx.addPath(CGPath(roundedRect: bar, cornerWidth: cornerRadius, cornerHeight: cornerRadius, transform: nil))
+            ctx.fillPath()
+        }
+
+        ctx.restoreGState()
+        image.unlockFocus()
         image.isTemplate = true
         return image
     }
