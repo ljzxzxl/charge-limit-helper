@@ -1,0 +1,10 @@
+This project includes SMC access code adapted from SMCKit:
+
+  Copyright (C) 2014-2017 beltex <https://beltex.github.io>
+  Licensed under the MIT License.
+
+The hardware behavior was validated on an Intel MacBookPro16,1 by writing
+the SMC BCLM key as root:
+
+  BCLM=100 allows charging.
+  BCLM=15 pauses charging after the target UI battery percentage is reached.
