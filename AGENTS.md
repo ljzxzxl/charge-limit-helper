@@ -79,6 +79,9 @@ Active discharge validation:
 - v0.1.10 changes the raw safety floor to `target - 4%` and adds a
   "等待充电" / "Waiting to Charge" display state for `BCLM=100` while the
   battery is still not actually charging.
+- v0.2.0 adds a manual update-check flow: the menu shows the current app
+  version, queries GitHub Releases for the latest tag, and opens the Release
+  page when a newer version is available. It does not self-update.
 
 ## Current Architecture
 
@@ -125,6 +128,8 @@ Swift Package products:
   - Manual Pause Charging / Resume Charging disables automatic charge limiting
     after confirmation; if automatic limiting is already disabled, no warning is
     shown.
+  - Menu shows the current app version and includes a manual GitHub Releases
+    update check. Newer versions are installed manually by the user.
 
 Supporting files:
 
@@ -173,8 +178,8 @@ git@github.com:ljzxzxl/charge-limit-helper.git
 Latest development release at this handoff:
 
 ```text
-v0.1.10
-https://github.com/ljzxzxl/charge-limit-helper/releases/tag/v0.1.10
+v0.2.0
+https://github.com/ljzxzxl/charge-limit-helper/releases/tag/v0.2.0
 ```
 
 ## Safety Rules For Future Work
@@ -260,6 +265,8 @@ After that, move toward a public app:
   better product explanation and possibly tuning.
 - Development raw SMC commands are intentionally whitelist-limited but are still
   privileged hardware controls. They should not be exposed in the production UI.
+- Update checking is notification-only; it opens GitHub Releases but does not
+  download, replace, or relaunch the app.
 
 ## Useful Commands
 

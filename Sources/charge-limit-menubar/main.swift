@@ -35,6 +35,13 @@ private enum L10n {
     static var enable: String { isChinese ? "开启" : "Enable" }
     static var continueAction: String { isChinese ? "继续" : "Continue" }
     static var cancel: String { isChinese ? "取消" : "Cancel" }
+    static var ok: String { isChinese ? "好的" : "OK" }
+    static var openRelease: String { isChinese ? "打开 Release 页面" : "Open Release Page" }
+    static var checkForUpdates: String { isChinese ? "检查更新..." : "Check for Updates..." }
+    static var checkingForUpdates: String { isChinese ? "正在检查更新..." : "Checking for Updates..." }
+    static var updateAvailableTitle: String { isChinese ? "发现新版本" : "Update Available" }
+    static var noUpdateAvailableTitle: String { isChinese ? "已经是最新版本" : "You're Up to Date" }
+    static var updateCheckFailedTitle: String { isChinese ? "检查更新失败" : "Update Check Failed" }
 
     static var manualPauseMessage: String {
         isChinese
@@ -54,6 +61,28 @@ private enum L10n {
 
     static func target(_ value: Int) -> String {
         isChinese ? "目标电量：\(value)%" : "Target: \(value)%"
+    }
+
+    static func version(_ value: String) -> String {
+        isChinese ? "版本：\(value)" : "Version: \(value)"
+    }
+
+    static func updateAvailableMessage(current: String, latest: String) -> String {
+        isChinese
+            ? "当前版本：\(current)\n最新版本：\(latest)\n\n是否打开 GitHub Release 页面手动下载新版？"
+            : "Current version: \(current)\nLatest version: \(latest)\n\nOpen the GitHub Release page to download the new version manually?"
+    }
+
+    static func noUpdateAvailableMessage(current: String) -> String {
+        isChinese
+            ? "当前版本 \(current) 已经是最新版本。"
+            : "Version \(current) is the latest available release."
+    }
+
+    static func updateCheckFailedMessage(_ error: String) -> String {
+        isChinese
+            ? "无法连接 GitHub Releases 或解析版本信息。\n\n\(error)"
+            : "Could not connect to GitHub Releases or parse version information.\n\n\(error)"
     }
 
     static func status(uiPercent: String, rawPercent: String?, targetPercent: Int, state: String, bclm: String) -> String {
@@ -170,6 +199,58 @@ private enum L10n {
     }
 }
 
+private struct GitHubRelease: Decodable {
+    let tagName: String
+    let htmlURL: URL
+
+    enum CodingKeys: String, CodingKey {
+        case tagName = "tag_name"
+        case htmlURL = "html_url"
+    }
+}
+
+private struct SemanticVersion: Comparable {
+    let components: [Int]
+
+    init(_ value: String) {
+        let cleaned = value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "^v", with: "", options: .regularExpression)
+        let versionCore = cleaned.split(separator: "-", maxSplits: 1).first.map(String.init) ?? cleaned
+        let parsed = versionCore.split(separator: ".").map { part in
+            let digits = part.prefix { $0.isNumber }
+            return Int(digits) ?? 0
+        }
+        components = parsed.isEmpty ? [0] : parsed
+    }
+
+    static func < (lhs: SemanticVersion, rhs: SemanticVersion) -> Bool {
+        let count = max(lhs.components.count, rhs.components.count)
+        for index in 0..<count {
+            let left = index < lhs.components.count ? lhs.components[index] : 0
+            let right = index < rhs.components.count ? rhs.components[index] : 0
+            if left != right {
+                return left < right
+            }
+        }
+        return false
+    }
+}
+
+private enum UpdateCheckError: LocalizedError {
+    case invalidResponse
+    case badStatus(Int)
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidResponse:
+            return "Invalid GitHub response."
+        case let .badStatus(statusCode):
+            return "GitHub returned HTTP \(statusCode)."
+        }
+    }
+}
+
 private enum MenuBarIcon {
     private static let logicalSize = NSSize(width: 18, height: 18)
 
@@ -237,8 +318,10 @@ private enum MenuBarIcon {
 private final class MenuBarApp: NSObject, NSApplicationDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let service = SocketChargeLimitService()
+    private let latestReleaseURL = URL(string: "https://api.github.com/repos/ljzxzxl/charge-limit-helper/releases/latest")!
     private var timer: Timer?
     private var lastResponse: HelperResponse?
+    private var isCheckingForUpdates = false
 
     private var targetPercent: Int {
         get {
@@ -260,6 +343,21 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
         set {
             UserDefaults.standard.set(newValue, forKey: DefaultsKey.enabled)
         }
+    }
+
+    private var appVersion: String {
+        if let bundleVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
+           !bundleVersion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return bundleVersion
+        }
+
+        let versionURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent("VERSION")
+        if let version = try? String(contentsOf: versionURL, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines),
+           !version.isEmpty {
+            return version
+        }
+
+        return "0.0.0"
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -401,6 +499,10 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
             menu.addItem(item)
         }
 
+        let version = NSMenuItem(title: L10n.version(appVersion), action: nil, keyEquivalent: "")
+        version.isEnabled = false
+        menu.addItem(version)
+
         menu.addItem(.separator())
 
         let enabled = NSMenuItem(title: L10n.enableLimit, action: #selector(toggleEnabled), keyEquivalent: "")
@@ -426,6 +528,15 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
         launchAtLogin.state = launchAtLoginState()
         launchAtLogin.target = self
         menu.addItem(launchAtLogin)
+
+        let updates = NSMenuItem(
+            title: isCheckingForUpdates ? L10n.checkingForUpdates : L10n.checkForUpdates,
+            action: #selector(checkForUpdates),
+            keyEquivalent: ""
+        )
+        updates.target = self
+        updates.isEnabled = !isCheckingForUpdates
+        menu.addItem(updates)
 
         menu.addItem(.separator())
 
@@ -518,6 +629,7 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
     }
 
     private func showAlert(title: String, message: String) {
+        NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
         alert.messageText = title
         alert.informativeText = message
@@ -665,6 +777,81 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
 
     @objc private func uninstallHelper() {
         runScript(named: "uninstall-helper.sh")
+    }
+
+    @objc private func checkForUpdates() {
+        guard !isCheckingForUpdates else {
+            return
+        }
+
+        isCheckingForUpdates = true
+        rebuildMenu(statusLines: currentMenuStatusLines())
+
+        Task { @MainActor in
+            defer {
+                isCheckingForUpdates = false
+                rebuildMenu(statusLines: currentMenuStatusLines())
+            }
+
+            do {
+                let release = try await fetchLatestRelease()
+                let currentVersion = appVersion
+                let latestVersion = release.tagName.trimmingCharacters(in: .whitespacesAndNewlines)
+                if SemanticVersion(latestVersion) > SemanticVersion(currentVersion) {
+                    showUpdateAvailableAlert(current: currentVersion, latest: latestVersion, releaseURL: release.htmlURL)
+                } else {
+                    showInformationalAlert(
+                        title: L10n.noUpdateAvailableTitle,
+                        message: L10n.noUpdateAvailableMessage(current: currentVersion)
+                    )
+                }
+            } catch {
+                showAlert(
+                    title: L10n.updateCheckFailedTitle,
+                    message: L10n.updateCheckFailedMessage(error.localizedDescription)
+                )
+            }
+        }
+    }
+
+    private func fetchLatestRelease() async throws -> GitHubRelease {
+        var request = URLRequest(url: latestReleaseURL, timeoutInterval: 15)
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.setValue("ChargeLimiter/\(appVersion)", forHTTPHeaderField: "User-Agent")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw UpdateCheckError.invalidResponse
+        }
+        guard (200..<300).contains(httpResponse.statusCode) else {
+            throw UpdateCheckError.badStatus(httpResponse.statusCode)
+        }
+
+        return try JSONDecoder().decode(GitHubRelease.self, from: data)
+    }
+
+    private func showUpdateAvailableAlert(current: String, latest: String, releaseURL: URL) {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = L10n.updateAvailableTitle
+        alert.informativeText = L10n.updateAvailableMessage(current: current, latest: latest)
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: L10n.openRelease)
+        alert.addButton(withTitle: L10n.cancel)
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            NSWorkspace.shared.open(releaseURL)
+        }
+    }
+
+    private func showInformationalAlert(title: String, message: String) {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: L10n.ok)
+        alert.runModal()
     }
 
     @objc private func toggleLaunchAtLogin() {
