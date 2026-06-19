@@ -17,7 +17,7 @@ Mac app for Intel MacBooks.
 - [x] Add README, architecture notes, validation notes, and AGENTS handoff.
 - [x] Push repository to GitHub.
 - [x] Rename app/helper identifiers to `com.ljzxzxl.ChargeLimiter.*`.
-- [x] Publish development DMG releases through `v0.1.6`.
+- [x] Publish development DMG releases through `v0.1.10`.
 
 ## Phase 1: Development Install Loop
 
@@ -131,7 +131,7 @@ Goal: build the user-facing app.
 - [x] Add experimental menu bar discharge-to-target behavior.
 - [x] Make discharge-to-target follow the user-visible macOS battery percentage,
   with raw SoC used only as a lower safety floor.
-- [x] Show both visible and raw battery percentages in the menu status line.
+- [x] Show both visible and raw battery percentages in the menu status.
 - [x] Split menu status into compact state, battery, and compatibility lines.
 - [x] Show active discharge-to-target as "正在放电" / "Discharging" when the
   visible percentage is above the target and battery telemetry indicates no
@@ -159,7 +159,9 @@ disconnect.
 - [x] Verify that preferring `rawStateOfCharge` as the target source can mislead
   users when macOS still displays a higher battery percentage.
 - [x] Change discharge-to-target decisions to use visible macOS percentage as
-  the target source, with a raw SoC safety floor at `target - 2%`.
+  the target source, with raw SoC used only as a lower safety floor.
+- [x] Change the raw SoC safety floor from `target - 2%` to `target - 4%`
+  after v0.1.9 showed visible SoC lagging raw SoC.
 - [x] Keep normal CLI/monitor hysteresis behavior unchanged by default.
 - [x] Add menu bar policy mode that writes `BCLM=15` at/above target and
   restores `BCLM=100` below the hysteresis threshold or at the raw safety floor.
@@ -175,11 +177,18 @@ disconnect.
 - [x] Confirm the app keeps `BCLM=15` at visible target 90 instead of resuming
   charging immediately.
 - [ ] Confirm the app restores `BCLM=100` below the hysteresis threshold.
-- [ ] Confirm the raw SoC safety floor restores `BCLM=100` if visible SoC stays
+- [x] Confirm the raw SoC safety floor restores `BCLM=100` if visible SoC stays
   stale above target.
+- [x] Record v0.1.9 observation: with target 90%, visible SoC stayed at 93%
+  while raw SoC reached 88%, causing the raw safety floor to restore
+  `BCLM=100`.
 - [x] Add menu status so users can see raw SoC vs visible SoC during discharge.
+- [x] Add "等待充电" / "Waiting to Charge" status for `BCLM=100` when the
+  battery is not actually charging yet.
 - [ ] Decide whether discharge-to-target should be always-on, optional, or an
   advanced setting.
+- [ ] Decide whether the raw safety margin should remain fixed at `target - 4%`,
+  become configurable, or be explained in the menu/status UI.
 
 Acceptance criteria:
 
@@ -266,7 +275,7 @@ Goal: make the app understandable and trustworthy.
 - [x] Add app icon.
 - [x] Add dedicated menu bar PNG icon.
 - [x] Localize the menu for Chinese/English system language.
-- [ ] Add concise status copy.
+- [x] Add concise status copy.
 - [ ] Add help/about window.
 - [ ] Add privacy statement.
 - [ ] Add safety FAQ.

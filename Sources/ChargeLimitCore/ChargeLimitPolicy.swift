@@ -18,7 +18,7 @@ public struct ChargeLimitConfig: Codable, Equatable {
         chargeSMCValue: UInt8 = 100,
         pollIntervalSeconds: UInt64 = 30,
         resumeAtTargetPercent: Bool = false,
-        rawDischargeSafetyMarginPercent: Int = 2
+        rawDischargeSafetyMarginPercent: Int = 4
     ) {
         self.enabled = enabled
         self.targetPercent = targetPercent

@@ -12,7 +12,8 @@ AlDente-like behavior:
 - Pause charging at the target.
 - Resume charging after the battery drops below a hysteresis threshold.
 - When the battery starts above the selected target, let it naturally discharge
-  down to the target while plugged in, then resume normal charge limiting.
+  down toward the target while plugged in, keep charging paused at the target,
+  then resume charging only below the hysteresis threshold.
 - Eventually ship as a downloadable, signed, notarized Mac menu bar app.
 
 The current repository is a development MVP, not a production-ready app.
@@ -54,8 +55,9 @@ Important interpretation:
   From v0.1.9 onward, discharge-to-target treats the user-visible macOS
   percentage as the target source of truth, keeps `BCLM=15` at/above the target,
   and only restores `BCLM=100` below the hysteresis threshold. The raw battery
-  gauge is only a safety floor, currently `target - 2%`, so the app does not keep
-  discharging if the visible percentage is stale.
+  gauge is only a safety floor. v0.1.10 uses `target - 4%` so the visible
+  percentage can get closer to the selected target before raw SoC protection
+  resumes charging.
 
 Active discharge validation:
 
@@ -70,6 +72,13 @@ Active discharge validation:
   battery percentage is at or above the target. Restore `BCLM=100` only when the
   visible percentage drops below the hysteresis threshold, or earlier if raw SoC
   reaches the safety floor.
+- In v0.1.9 validation with target 90% and the earlier `target - 2%` safety
+  floor, the visible percentage stayed at 93% while raw SoC reached 88%. The app
+  restored `BCLM=100` as designed. This protected the battery but made the
+  visible UI appear above target while charging had resumed.
+- v0.1.10 changes the raw safety floor to `target - 4%` and adds a
+  "等待充电" / "Waiting to Charge" display state for `BCLM=100` while the
+  battery is still not actually charging.
 
 ## Current Architecture
 
@@ -161,6 +170,13 @@ The repository has been pushed to:
 git@github.com:ljzxzxl/charge-limit-helper.git
 ```
 
+Latest development release at this handoff:
+
+```text
+v0.1.10
+https://github.com/ljzxzxl/charge-limit-helper/releases/tag/v0.1.10
+```
+
 ## Safety Rules For Future Work
 
 This project writes low-level battery firmware state. Treat write operations as
@@ -202,17 +218,19 @@ Safe final state should normally be `BCLM=100` when not actively validating, or
 
 ## Near-Term Development Plan
 
-Recommended next milestone: turn the current validation app into a safer
-downloadable development release.
+Recommended next milestone: make the current development release safer and less
+confusing for broader Intel MacBook testers.
 
-1. Finish validating discharge-to-target with target 90% on `MacBookPro16,1`
-   using the v0.1.9 visible-percent-primary policy.
+1. Continue validating discharge-to-target with target 90% on `MacBookPro16,1`,
+   especially the visible SoC lag versus raw safety floor behavior.
 2. Decide whether the raw SMC validation commands should remain in the helper,
    be hidden behind a development flag, or be removed before the next release.
-3. Add fuller diagnostics for active discharge-to-target mode beyond the compact
+3. Continue validating whether the `target - 4%` raw safety margin is a good
+   default, or whether it should become configurable.
+4. Add fuller diagnostics for active discharge-to-target mode beyond the compact
    menu status that displays state plus visible/raw percentages.
-4. Add fallback recovery documentation.
-5. Broaden validation to at least one more Intel MacBook model.
+5. Add fallback recovery documentation.
+6. Broaden validation to at least one more Intel MacBook model.
 
 After that, move toward a public app:
 
@@ -237,6 +255,9 @@ After that, move toward a public app:
 - Discharge-to-target has only been validated on one machine so far. The target
   decision now follows the visible macOS percentage, with raw SoC used as a
   safety floor, but the full behavior still needs broader hardware testing.
+- The raw safety floor can restore charging while the macOS visible percentage
+  is still above the selected target. This is intentional for safety, but needs
+  better product explanation and possibly tuning.
 - Development raw SMC commands are intentionally whitelist-limited but are still
   privileged hardware controls. They should not be exposed in the production UI.
 

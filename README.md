@@ -1,5 +1,33 @@
 # ChargeLimiter
 
+<p align="center">
+  <a href="https://github.com/ljzxzxl/charge-limit-helper/releases">
+    <strong>Download ChargeLimiter / 下载最新版 DMG</strong>
+  </a>
+</p>
+
+<table>
+  <tr>
+    <td width="32%" align="center">
+      <img src="app.png" alt="ChargeLimiter app icon" width="180">
+      <br>
+      <strong>App Icon / 应用图标</strong>
+    </td>
+    <td width="68%" align="center">
+      <img src="menu.jpg" alt="ChargeLimiter menu bar screenshot" width="360">
+      <br>
+      <strong>Menu Bar App / 菜单栏效果</strong>
+    </td>
+  </tr>
+</table>
+
+ChargeLimiter is a downloadable macOS menu bar app for Intel MacBooks. It helps
+pause charging at a selected battery percentage and keeps the current charging
+state visible from the menu bar.
+
+ChargeLimiter 是一个可下载安装的 macOS 菜单栏应用，面向 Intel MacBook，帮助你把
+电池充电限制在指定百分比，并直接在菜单栏查看当前充放电状态。
+
 [English](#english) | [中文](#中文)
 
 ## English

@@ -76,6 +76,10 @@ private enum L10n {
         isChinese ? "正在放电" : "Discharging"
     }
 
+    static var waitingToCharge: String {
+        isChinese ? "等待充电" : "Waiting to Charge"
+    }
+
     static func batteryStatus(uiPercent: String, rawPercent: String?) -> String {
         if let rawPercent {
             return isChinese
@@ -323,6 +327,10 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
             return L10n.dischargingToTarget
         }
 
+        if isWaitingToCharge(response) {
+            return L10n.waitingToCharge
+        }
+
         return L10n.chargeState(ChargeStateResolver.resolve(battery: response.battery, bclm: response.bclm))
     }
 
@@ -345,6 +353,22 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
         let isDischarging = batteryAmperage.map { $0 <= 0 } ?? false
 
         return isNotCharging || hasNoChargeCurrent || isDischarging
+    }
+
+    private func isWaitingToCharge(_ response: HelperResponse) -> Bool {
+        guard response.bclm == 100,
+              let battery = response.battery,
+              battery.externalConnected == true,
+              battery.fullyCharged != true else {
+            return false
+        }
+
+        let batteryAmperage = battery.amperage ?? battery.instantAmperage
+        let isNotCharging = battery.isCharging == false
+        let hasNoChargeCurrent = battery.chargingCurrent == 0 || battery.notChargingReason == 14
+        let isDischargingOrIdle = batteryAmperage.map { $0 <= 0 } ?? false
+
+        return isNotCharging || hasNoChargeCurrent || isDischargingOrIdle
     }
 
     private func currentMenuStatusLines() -> [String] {

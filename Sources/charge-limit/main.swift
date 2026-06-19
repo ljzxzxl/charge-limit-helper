@@ -156,7 +156,7 @@ private func selfTest() throws {
     expect(belowDischargeTarget.desiredSMCValue == 100, "should resume charging below the hysteresis threshold")
 
     let rawSafety = try dischargePolicy.decide(
-        snapshot: BatterySnapshot(uiStateOfCharge: 95, rawStateOfCharge: 88),
+        snapshot: BatterySnapshot(uiStateOfCharge: 95, rawStateOfCharge: 86),
         currentBCLM: 15
     )
     expect(rawSafety.desiredSMCValue == 100, "should stop discharging at the raw safety floor")
