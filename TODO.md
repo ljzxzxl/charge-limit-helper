@@ -17,7 +17,7 @@ Mac app for Intel MacBooks.
 - [x] Add README, architecture notes, validation notes, and AGENTS handoff.
 - [x] Push repository to GitHub.
 - [x] Rename app/helper identifiers to `com.ljzxzxl.ChargeLimiter.*`.
-- [x] Publish development DMG releases through `v0.2.0`.
+- [x] Publish development DMG releases through `v0.2.1`.
 
 ## Phase 1: Development Install Loop
 
@@ -279,6 +279,7 @@ Goal: make the app understandable and trustworthy.
 - [x] Show the current app version in the menu.
 - [x] Add manual update checking that queries GitHub Releases and opens the
   release page for download.
+- [x] Move the current version display into the Check for Updates menu item.
 - [ ] Add help/about window.
 - [ ] Add privacy statement.
 - [ ] Add safety FAQ.

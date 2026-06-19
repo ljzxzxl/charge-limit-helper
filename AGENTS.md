@@ -82,6 +82,8 @@ Active discharge validation:
 - v0.2.0 adds a manual update-check flow: the menu shows the current app
   version, queries GitHub Releases for the latest tag, and opens the Release
   page when a newer version is available. It does not self-update.
+- v0.2.1 keeps the version in the Check for Updates menu item instead of a
+  separate disabled menu row.
 
 ## Current Architecture
 
@@ -128,8 +130,9 @@ Swift Package products:
   - Manual Pause Charging / Resume Charging disables automatic charge limiting
     after confirmation; if automatic limiting is already disabled, no warning is
     shown.
-  - Menu shows the current app version and includes a manual GitHub Releases
-    update check. Newer versions are installed manually by the user.
+  - Menu includes a manual GitHub Releases update check. The update item also
+    shows the current version, and newer versions are installed manually by the
+    user.
 
 Supporting files:
 
@@ -178,8 +181,8 @@ git@github.com:ljzxzxl/charge-limit-helper.git
 Latest development release at this handoff:
 
 ```text
-v0.2.0
-https://github.com/ljzxzxl/charge-limit-helper/releases/tag/v0.2.0
+v0.2.1
+https://github.com/ljzxzxl/charge-limit-helper/releases/tag/v0.2.1
 ```
 
 ## Safety Rules For Future Work

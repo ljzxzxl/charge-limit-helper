@@ -37,7 +37,7 @@ private enum L10n {
     static var cancel: String { isChinese ? "取消" : "Cancel" }
     static var ok: String { isChinese ? "好的" : "OK" }
     static var openRelease: String { isChinese ? "打开 Release 页面" : "Open Release Page" }
-    static var checkForUpdates: String { isChinese ? "检查更新..." : "Check for Updates..." }
+    static var checkForUpdates: String { isChinese ? "检查更新" : "Check for Updates" }
     static var checkingForUpdates: String { isChinese ? "正在检查更新..." : "Checking for Updates..." }
     static var updateAvailableTitle: String { isChinese ? "发现新版本" : "Update Available" }
     static var noUpdateAvailableTitle: String { isChinese ? "已经是最新版本" : "You're Up to Date" }
@@ -65,6 +65,10 @@ private enum L10n {
 
     static func version(_ value: String) -> String {
         isChinese ? "版本：\(value)" : "Version: \(value)"
+    }
+
+    static func currentVersionSuffix(_ value: String) -> String {
+        isChinese ? "(当前 \(value))" : "(Current \(value))"
     }
 
     static func updateAvailableMessage(current: String, latest: String) -> String {
@@ -499,10 +503,6 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
             menu.addItem(item)
         }
 
-        let version = NSMenuItem(title: L10n.version(appVersion), action: nil, keyEquivalent: "")
-        version.isEnabled = false
-        menu.addItem(version)
-
         menu.addItem(.separator())
 
         let enabled = NSMenuItem(title: L10n.enableLimit, action: #selector(toggleEnabled), keyEquivalent: "")
@@ -529,11 +529,9 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
         launchAtLogin.target = self
         menu.addItem(launchAtLogin)
 
-        let updates = NSMenuItem(
-            title: isCheckingForUpdates ? L10n.checkingForUpdates : L10n.checkForUpdates,
-            action: #selector(checkForUpdates),
-            keyEquivalent: ""
-        )
+        let updateTitle = isCheckingForUpdates ? L10n.checkingForUpdates : L10n.checkForUpdates
+        let updates = NSMenuItem(title: updateTitle, action: #selector(checkForUpdates), keyEquivalent: "")
+        updates.attributedTitle = updateMenuItemTitle(updateTitle)
         updates.target = self
         updates.isEnabled = !isCheckingForUpdates
         menu.addItem(updates)
@@ -569,6 +567,27 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
         menu.addItem(quit)
 
         self.statusItem.menu = menu
+    }
+
+    private func updateMenuItemTitle(_ title: String) -> NSAttributedString {
+        let suffix = L10n.currentVersionSuffix(appVersion)
+        let fullTitle = "\(title) \(suffix)"
+        let attributed = NSMutableAttributedString(
+            string: fullTitle,
+            attributes: [
+                .font: NSFont.menuFont(ofSize: 0),
+                .foregroundColor: NSColor.labelColor
+            ]
+        )
+        let suffixRange = (fullTitle as NSString).range(of: suffix, options: .backwards)
+        attributed.addAttributes(
+            [
+                .font: NSFont.menuFont(ofSize: 0),
+                .foregroundColor: NSColor.disabledControlTextColor
+            ],
+            range: suffixRange
+        )
+        return attributed
     }
 
     private func configureStatusItem(toolTip: String) {
