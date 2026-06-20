@@ -84,6 +84,8 @@ Active discharge validation:
   page when a newer version is available. It does not self-update.
 - v0.2.1 keeps the version in the Check for Updates menu item instead of a
   separate disabled menu row.
+- v0.2.2 fixes the main app icon for Launchpad by using a transparent PNG
+  source and adding breathing room around the icon body.
 
 ## Current Architecture
 
@@ -127,6 +129,8 @@ Swift Package products:
     visible/raw battery percentages second, compatibility third.
   - Menu bar icon uses both 1x and 2x PNG representations so it stays sharp on
     Retina displays.
+  - Main app icon uses a transparent source PNG so Launchpad does not show dark
+    square corners around the rounded icon.
   - Manual Pause Charging / Resume Charging disables automatic charge limiting
     after confirmation; if automatic limiting is already disabled, no warning is
     shown.
@@ -181,8 +185,8 @@ git@github.com:ljzxzxl/charge-limit-helper.git
 Latest development release at this handoff:
 
 ```text
-v0.2.1
-https://github.com/ljzxzxl/charge-limit-helper/releases/tag/v0.2.1
+v0.2.2
+https://github.com/ljzxzxl/charge-limit-helper/releases/tag/v0.2.2
 ```
 
 ## Safety Rules For Future Work

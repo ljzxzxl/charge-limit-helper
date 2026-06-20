@@ -17,7 +17,7 @@ Mac app for Intel MacBooks.
 - [x] Add README, architecture notes, validation notes, and AGENTS handoff.
 - [x] Push repository to GitHub.
 - [x] Rename app/helper identifiers to `com.ljzxzxl.ChargeLimiter.*`.
-- [x] Publish development DMG releases through `v0.2.1`.
+- [x] Publish development DMG releases through `v0.2.2`.
 
 ## Phase 1: Development Install Loop
 
@@ -273,6 +273,7 @@ Acceptance criteria:
 Goal: make the app understandable and trustworthy.
 
 - [x] Add app icon.
+- [x] Fix Launchpad app icon sizing and transparent rounded corners.
 - [x] Add dedicated menu bar PNG icon.
 - [x] Localize the menu for Chinese/English system language.
 - [x] Add concise status copy.
