@@ -54,6 +54,7 @@ jobs:
           - Uses AppleSMC `BCLM` control through a privileged helper.
           - Shows the current app version in the menu.
           - Can check GitHub Releases for updates and open the release page for manual download.
+          - Dims the menu bar icon when charge limiting is inactive, and shows a bright icon when active.
           - Ad-hoc signed development build, not notarized yet.
           - Use at your own risk while the project is still young.
 
@@ -71,6 +72,7 @@ jobs:
           - 通过 privileged helper 写入 AppleSMC `BCLM`。
           - 在菜单中显示当前版本号。
           - 可检查 GitHub Releases 是否有新版，并打开 Release 页面供用户手动下载。
+          - 充电限制未启用时菜单栏图标变灰，规则启用时显示为明亮状态。
           - 当前是 ad-hoc 签名的开发构建，尚未 notarize。
           - 项目仍在早期阶段，请自行承担使用风险。
 

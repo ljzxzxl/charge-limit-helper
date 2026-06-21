@@ -281,6 +281,7 @@ Goal: make the app understandable and trustworthy.
 - [x] Add manual update checking that queries GitHub Releases and opens the
   release page for download.
 - [x] Move the current version display into the Check for Updates menu item.
+- [x] Show charge limit active/inactive state through the menu bar icon color.
 - [ ] Add help/about window.
 - [ ] Add privacy statement.
 - [ ] Add safety FAQ.

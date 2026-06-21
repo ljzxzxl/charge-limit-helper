@@ -259,12 +259,25 @@ private enum MenuBarIcon {
     private static let logicalSize = NSSize(width: 18, height: 18)
 
     @MainActor
-    static func make(for appearance: NSAppearance?) -> NSImage {
+    static func make(for appearance: NSAppearance?, isActive: Bool) -> NSImage {
         let imageName = usesDarkAppearance(appearance) ? "MenuBarIconDark" : "MenuBarIconLight"
-        let image = loadImage(named: imageName) ?? NSImage(size: logicalSize)
+        let image = loadImage(named: imageName, color: iconColor(for: appearance, isActive: isActive)) ?? NSImage(size: logicalSize)
         image.size = logicalSize
         image.isTemplate = false
         return image
+    }
+
+    @MainActor
+    private static func iconColor(for appearance: NSAppearance?, isActive: Bool) -> NSColor {
+        if usesDarkAppearance(appearance) {
+            return isActive
+                ? NSColor(calibratedWhite: 1.0, alpha: 0.95)
+                : NSColor(calibratedWhite: 0.48, alpha: 1.0)
+        }
+
+        return isActive
+            ? NSColor(calibratedWhite: 0.0, alpha: 0.86)
+            : NSColor(calibratedWhite: 0.62, alpha: 1.0)
     }
 
     @MainActor
@@ -273,9 +286,9 @@ private enum MenuBarIcon {
         return effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
     }
 
-    private static func loadImage(named name: String) -> NSImage? {
+    private static func loadImage(named name: String, color: NSColor) -> NSImage? {
         for urls in imageURLSets(named: name) {
-            if let image = makeMultiScaleImage(oneX: urls.oneX, twoX: urls.twoX) {
+            if let image = makeMultiScaleImage(oneX: urls.oneX, twoX: urls.twoX, color: color) {
                 return image
             }
         }
@@ -300,13 +313,14 @@ private enum MenuBarIcon {
         return [bundleURLs, repoURLs]
     }
 
-    private static func makeMultiScaleImage(oneX: URL?, twoX: URL?) -> NSImage? {
+    private static func makeMultiScaleImage(oneX: URL?, twoX: URL?, color: NSColor) -> NSImage? {
         let image = NSImage(size: logicalSize)
         var didAddRepresentation = false
 
         for url in [oneX, twoX].compactMap({ $0 }) where FileManager.default.fileExists(atPath: url.path) {
             guard let data = try? Data(contentsOf: url),
-                  let representation = NSBitmapImageRep(data: data) else {
+                  let sourceRepresentation = NSBitmapImageRep(data: data),
+                  let representation = recoloredRepresentation(sourceRepresentation, color: color) else {
                 continue
             }
             representation.size = logicalSize
@@ -315,6 +329,32 @@ private enum MenuBarIcon {
         }
 
         return didAddRepresentation ? image : nil
+    }
+
+    private static func recoloredRepresentation(_ representation: NSBitmapImageRep, color: NSColor) -> NSBitmapImageRep? {
+        guard let output = representation.copy() as? NSBitmapImageRep,
+              let normalizedColor = color.usingColorSpace(.deviceRGB) else {
+            return nil
+        }
+
+        for y in 0..<output.pixelsHigh {
+            for x in 0..<output.pixelsWide {
+                guard let sourceColor = output.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else {
+                    continue
+                }
+
+                let alpha = sourceColor.alphaComponent * normalizedColor.alphaComponent
+                let targetColor = NSColor(
+                    deviceRed: normalizedColor.redComponent,
+                    green: normalizedColor.greenComponent,
+                    blue: normalizedColor.blueComponent,
+                    alpha: alpha
+                )
+                output.setColor(targetColor, atX: x, y: y)
+            }
+        }
+
+        return output
     }
 }
 
@@ -362,6 +402,16 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
         }
 
         return "0.0.0"
+    }
+
+    private var isChargeLimitRuleActive: Bool {
+        guard isEnabled,
+              let lastResponse,
+              lastResponse.ok else {
+            return false
+        }
+
+        return lastResponse.compatibility?.isSupported != false
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -567,6 +617,7 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
         menu.addItem(quit)
 
         self.statusItem.menu = menu
+        updateStatusItemImage()
     }
 
     private func updateMenuItemTitle(_ title: String) -> NSAttributedString {
@@ -591,14 +642,19 @@ private final class MenuBarApp: NSObject, NSApplicationDelegate {
     }
 
     private func configureStatusItem(toolTip: String) {
+        updateStatusItemImage()
+        statusItem.button?.toolTip = toolTip
+    }
+
+    private func updateStatusItemImage() {
         guard let button = statusItem.button else {
             return
         }
 
-        button.image = MenuBarIcon.make(for: button.effectiveAppearance)
+        let appearance = button.effectiveAppearance
+        button.image = MenuBarIcon.make(for: appearance, isActive: isChargeLimitRuleActive)
         button.imagePosition = .imageOnly
         button.title = ""
-        button.toolTip = toolTip
     }
 
     private func write(_ value: UInt8, retryOnRateLimit: Bool = false) {

@@ -86,6 +86,9 @@ Active discharge validation:
   separate disabled menu row.
 - v0.2.2 fixes the main app icon for Launchpad by using a transparent PNG
   source and adding breathing room around the icon body.
+- v0.2.2 recolors the menu bar icon from the existing PNG alpha mask so it is
+  bright only when the charge limit rule is active and dim when the rule is not
+  active or unavailable.
 
 ## Current Architecture
 
@@ -128,7 +131,8 @@ Swift Package products:
   - Menu status is split into compact lines: charging/discharging state first,
     visible/raw battery percentages second, compatibility third.
   - Menu bar icon uses both 1x and 2x PNG representations so it stays sharp on
-    Retina displays.
+    Retina displays. It is recolored at runtime from the PNG alpha mask to show
+    bright active and dim inactive states.
   - Main app icon uses a transparent source PNG so Launchpad does not show dark
     square corners around the rounded icon.
   - Manual Pause Charging / Resume Charging disables automatic charge limiting
