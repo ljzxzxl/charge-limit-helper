@@ -86,9 +86,12 @@ Active discharge validation:
   separate disabled menu row.
 - v0.2.2 fixes the main app icon for Launchpad by using a transparent PNG
   source and adding breathing room around the icon body.
-- v0.2.2 recolors the menu bar icon from the existing PNG alpha mask so it is
+- v0.2.3 recolors the menu bar icon from the existing PNG alpha mask so it is
   bright only when the charge limit rule is active and dim when the rule is not
   active or unavailable.
+- The release workflow now writes the tag version into `VERSION` before
+  packaging tagged releases, and deletes stale `ChargeLimiter-*.dmg` assets
+  before uploading replacements to an existing release.
 
 ## Current Architecture
 
@@ -189,8 +192,8 @@ git@github.com:ljzxzxl/charge-limit-helper.git
 Latest development release at this handoff:
 
 ```text
-v0.2.2
-https://github.com/ljzxzxl/charge-limit-helper/releases/tag/v0.2.2
+v0.2.3
+https://github.com/ljzxzxl/charge-limit-helper/releases/tag/v0.2.3
 ```
 
 ## Safety Rules For Future Work

@@ -17,7 +17,7 @@ Mac app for Intel MacBooks.
 - [x] Add README, architecture notes, validation notes, and AGENTS handoff.
 - [x] Push repository to GitHub.
 - [x] Rename app/helper identifiers to `com.ljzxzxl.ChargeLimiter.*`.
-- [x] Publish development DMG releases through `v0.2.2`.
+- [x] Publish development DMG releases through `v0.2.3`.
 
 ## Phase 1: Development Install Loop
 
@@ -235,6 +235,8 @@ Goal: make releases reproducible.
 - [ ] Add unit tests for policy logic.
 - [ ] Add non-hardware tests for protocol and config.
 - [x] Add tag-driven release workflow.
+- [x] Make tagged release packaging use the tag version and replace stale DMG
+  assets when re-running an existing release.
 - [ ] Add changelog.
 - [ ] Add issue templates:
   - [ ] Bug report
